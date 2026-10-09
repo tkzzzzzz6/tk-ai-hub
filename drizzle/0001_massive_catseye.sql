@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `resources_url_unique` ON `resources` (`canonical_url`) WHERE canonical_url <> '';

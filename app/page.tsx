@@ -1,0 +1,1 @@
+import Hub from "./hub";import {seedResources} from "@/lib/catalog";import {listResources} from "@/lib/store";export const dynamic="force-dynamic";export default async function Home(){try{return <Hub initialResources={await listResources()}/>;}catch(e){console.error(e);return <Hub initialResources={seedResources} storageUnavailable/>;}}

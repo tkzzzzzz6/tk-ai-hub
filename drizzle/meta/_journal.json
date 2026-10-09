@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1791522334013,
+      "tag": "0000_broken_iron_patriot",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1791522642668,
+      "tag": "0001_massive_catseye",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791523165889,
+      "tag": "0002_dizzy_brother_voodoo",
+      "breakpoints": true
+    }
+  ]
+}

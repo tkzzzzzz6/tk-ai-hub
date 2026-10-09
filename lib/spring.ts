@@ -1,0 +1,1 @@
+export function stepSpring(position:number,velocity:number,target:number,dt:number,stiffness=190,damping=22){const step=Math.min(Math.max(dt,0),1/30);const nextVelocity=velocity+((target-position)*stiffness-velocity*damping)*step;return {position:position+nextVelocity*step,velocity:nextVelocity};}

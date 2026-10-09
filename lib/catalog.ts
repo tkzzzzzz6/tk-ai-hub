@@ -1,5 +1,5 @@
 export const categories = ["全部","提示词","Skills","MCP"] as const;
-export type Resource = {id:string;title:string;category:string;topic?:string;description:string;url:string;tags:string[];content:string;titleEn?:string;descriptionEn?:string;contentEn?:string;originalLanguage?:string;source:string;status:string;updatedAt:string;stars?:number|null;revision?:number;duplicateOf?:string|null;similarity?:number|null};
+export type Resource = {id:string;title:string;category:string;topic?:string;submissionId?:string;description:string;url:string;tags:string[];content:string;titleEn?:string;descriptionEn?:string;contentEn?:string;originalLanguage?:string;source:string;status:string;updatedAt:string;stars?:number|null;revision?:number;duplicateOf?:string|null;similarity?:number|null};
 const entry=(id:string,title:string,category:string,description:string,url:string,tags:string[],content="",source="GitHub · 官方仓库"):Resource=>({id,title,category,description,url,tags,content:content||"使用方式、部署条件和依赖以来源文档为准。",source,status:"published",updatedAt:""});
 export const seedResources:Resource[]=[
 entry("paper-prompt","论文阅读：先证据，后结论","提示词","围绕研究问题、方法和实验整理笔记，标出证据与不确定性。","",["论文阅读","科研"],"请根据我提供的论文分析：\n1. 研究问题与核心贡献。\n2. 方法流程、关键假设和适用条件。\n3. 实验设置、主要结果与消融实验。\n4. 局限、复现条件与值得追问的问题。\n每项结论标注对应章节、图表或原文证据。没有提供的信息写“未说明”，不要补造。\n\n论文内容：{{论文内容}}","本站整理"),

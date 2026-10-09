@@ -1,0 +1,11 @@
+.demo-preview{min-width:0;margin:0 0 18px;border:1px solid rgba(255,255,255,.85);border-radius:17px;padding:10px;background:linear-gradient(145deg,rgba(244,251,255,.88),rgba(229,242,252,.62));box-shadow:inset 0 1px 0 white,0 4px 16px rgba(76,130,168,.04)}
+.demo-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:1px 3px 9px;color:#5c839f;font-size:.75rem}
+.demo-heading>span,.demo-heading>a{display:inline-flex;align-items:center;gap:5px}.demo-heading>a{color:#6289a4;white-space:nowrap}
+.demo-surface{display:block;width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:11px;background:#e2eef8;isolation:isolate}
+.demo-surface img,.demo-surface video{display:block;width:100%;height:100%;object-fit:contain}.demo-surface img{transition:transform .4s cubic-bezier(.2,.7,.3,1)}
+button.demo-surface:hover img,a.demo-surface:hover img{transform:scale(1.025)}.demo-video{background:#142638}
+.demo-link-preview{display:flex;align-items:center;gap:12px;min-height:91px;padding:15px 12px;border-radius:11px;background:rgba(255,255,255,.56);color:#527a97}
+.demo-link-icon{display:grid;place-items:center;flex-shrink:0;width:43px;height:43px;border:1px solid #d6e8f5;background:rgba(240,248,255,.85);border-radius:13px}.demo-link-preview>span:nth-child(2){flex:1;min-width:0}.demo-link-preview strong{display:block;font-size:.875rem}.demo-link-preview small{display:block;margin-top:5px;color:#7a94a8;font-size:.75rem;overflow-wrap:anywhere}
+.demo-fields{padding:15px;border:1px solid #d8e8f4;border-radius:13px;background:rgba(237,246,253,.65)}.demo-fields select{min-height:41px;border:1px solid #cbddea;border-radius:10px;padding:9px 12px;background:white;color:#426983}.demo-fields .form-hint{margin:6px 0 12px}.demo-fields .demo-preview{margin:13px 0 0}.admin-row>.demo-preview,.import-preview .demo-preview{max-width:470px;margin-top:15px}.detail-body>.demo-preview{margin-top:18px;margin-bottom:23px}.detail-body .demo-surface{max-height:430px}.demo-preview a:focus-visible,.demo-preview button:focus-visible{outline:3px solid #75b5e3;outline-offset:3px}
+.resource-card .card-bottom{flex-wrap:wrap;gap:10px}.resource-card .copy-options button{white-space:nowrap}
+@media(max-width:650px){.demo-preview{border-radius:14px}.demo-fields{padding:12px}.demo-heading{font-size:.75rem}.detail-body .demo-surface{max-height:300px}}

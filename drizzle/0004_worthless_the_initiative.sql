@@ -1,0 +1,1 @@
+ALTER TABLE `resources` ADD `topic` text DEFAULT '' NOT NULL;

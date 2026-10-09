@@ -10,3 +10,5 @@
 @media(hover:none){.resource-card:before,.rem-card:after{display:none}.resource-card:hover{transform:none}}
 @media(prefers-reduced-motion:reduce){.ambient-scene span,.glass-reflection:before{animation:none;will-change:auto}.resource-card,.rem-card{transform:none!important}.resource-card:before,.rem-card:after{display:none}}
 @media(prefers-reduced-transparency:reduce){.rail-intake{background:#f8fcff;backdrop-filter:none}.ambient-scene,.glass-reflection{display:none}}
+
+.admin-wrap .category-tabs{height:auto;flex-wrap:wrap;max-width:100%}

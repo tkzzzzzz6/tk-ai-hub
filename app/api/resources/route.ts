@@ -3,7 +3,7 @@ import {z} from "zod";
 import {requireUser,protectOrigin,ApiError,errorResponse} from "@/lib/auth";
 import {db,listResources,getResource} from "@/lib/store";
 import {canonicalUrl,fingerprint,similarity} from "@/lib/dedupe";
-export const resourceForm=z.object({id:z.string().max(100).optional(),submissionId:z.string().uuid().optional(),title:z.string().trim().min(1).max(120),category:z.enum(["提示词","Skills","MCP"]),topic:z.enum(topics).optional(),description:z.string().trim().min(1).max(1500),url:z.string().max(2000),tags:z.array(z.string().trim().min(1).max(40)).max(10),content:z.string().max(50000),titleEn:z.string().trim().max(120).default(""),descriptionEn:z.string().trim().max(1500).default(""),contentEn:z.string().trim().max(50000).default(""),source:z.string().trim().min(1).max(150),status:z.enum(["pending","published","hidden","rejected"]),revision:z.number().int().positive().optional()});
+export const resourceForm=z.object({id:z.string().max(100).optional(),submissionId:z.string().uuid().optional(),title:z.string().trim().min(1).max(120),category:z.enum(["提示词","Skills","MCP"]),topic:z.enum(topics).optional(),description:z.string().trim().min(1).max(1500),url:z.string().max(2000),tags:z.array(z.string().trim().min(1).max(40)).max(10),content:z.string().max(50000),titleEn:z.string().trim().max(120).default(""),descriptionEn:z.string().trim().max(1500).default(""),contentEn:z.string().trim().max(50000).default(""),source:z.string().trim().min(1).max(150),status:z.enum(["pending","published","hidden","rejected","deleted"]),revision:z.number().int().positive().optional()});
 export const dynamic="force-dynamic";
 export async function GET(request:Request){try{const all=new URL(request.url).searchParams.get("all")==="1";if(all)await requireUser(true);return Response.json({resources:await listResources(all)},{headers:{"Cache-Control":"no-store"}});}catch(error){return errorResponse(error);}}
 export async function POST(request:Request){try{
@@ -14,9 +14,11 @@ export async function POST(request:Request){try{
  if(input.category!=="提示词"&&!input.url)throw new ApiError(400,"请填写资源链接");
  let url:string;try{url=canonicalUrl(input.url);}catch(error){throw new ApiError(400,error instanceof Error?error.message:"链接无效");}
  const existing=input.id?await getResource(input.id):null;if(input.id&&!existing)throw new ApiError(404,"资源不存在");
+ if(existing?.status==="deleted"&&!['deleted','pending'].includes(input.status))throw new ApiError(400,"请先恢复到候选列表，再审核公开");
+ if(!existing&&input.status==="deleted")throw new ApiError(400,"请先添加资源，再移入回收站");
  if(input.submissionId){if(input.id)throw new ApiError(400,"投稿只能转为新候选");const submitted=await db().prepare("SELECT id FROM submissions WHERE id=? AND status='pending'").bind(input.submissionId).first();if(!submitted)throw new ApiError(409,"投稿已经处理，请刷新");}
  input.topic=input.topic||(existing?topicOf(existing):inferTopic(input));const originalLanguage=existing?.originalLanguage||(input.content&&/[\u4e00-\u9fff]/.test(input.content)?"zh":"en");
- const others=await listResources(true);const duplicate=others.find(resource=>resource.id!==input.id&&url&&canonicalUrl(resource.url)===url);if(duplicate)throw new ApiError(409,`相同链接已收录：${duplicate.title}，请编辑已有条目`);
+ const others=(await listResources(true)).filter(resource=>resource.status!=="deleted");const duplicate=others.find(resource=>resource.id!==input.id&&url&&canonicalUrl(resource.url)===url);if(duplicate)throw new ApiError(409,`相同链接已收录：${duplicate.title}，请编辑已有条目`);
  const hash=await fingerprint(JSON.stringify([input.content,input.contentEn]));const exact=others.find(resource=>resource.id!==input.id&&resource.category===input.category&&resource.content===input.content&&resource.contentEn===input.contentEn);let related=exact?.id||null,score=exact?100:0;
  if(!exact&&!existing){for(const resource of others.filter(resource=>resource.category===input.category)){const overlap=Math.round(similarity(input.title+" "+input.description,resource.title+" "+resource.description)*100);if(overlap>score&&overlap>=45){related=resource.id;score=overlap;}}}
  const now=new Date().toISOString(),id=existing?.id||(input.submissionId?"submitted-"+input.submissionId:crypto.randomUUID());

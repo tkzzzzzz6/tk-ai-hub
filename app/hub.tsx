@@ -8,6 +8,7 @@ import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from "@/compo
 import {Toaster,toast} from "sonner";
 import {categories,type Resource,socialLinks} from "@/lib/catalog";
 import {topics,topicOf} from "@/lib/taxonomy";
+import {resourceTone,topicTone,promptColorLegend} from "@/lib/resource-tones";
 import {filterLibrary} from "@/lib/library-filters";
 import {skillInstallPrompt} from "@/lib/skill-install";
 import {useResourceTools} from "@/lib/webmcp";
@@ -129,17 +130,18 @@ export default function Hub({initialResources,storageUnavailable=false}:{initial
         <div className="library-controls">
           <div className="search-row">
             <label className="search-field"><Search size={20} aria-hidden="true"/><input ref={searchRef} aria-label="搜索资源" value={query} onChange={event=>setQuery(event.target.value)} placeholder="搜索名称、用途或中英文内容…"/>{query?<button aria-label="清空搜索" onClick={()=>{setQuery("");searchRef.current?.focus();}}><X size={17} aria-hidden="true"/></button>:<kbd aria-hidden="true">Ctrl K</kbd>}</label>
-            <Select value={topic} onValueChange={value=>{setTopic(value);setTag("全部标签");}}><SelectTrigger className="scene-select" aria-label="按用途分类"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="全部用途">全部用途</SelectItem>{availableTopics.map(item=><SelectItem key={item} value={item}>{item} · {typeResources.filter(resource=>topicOf(resource)===item).length}</SelectItem>)}</SelectContent></Select>
+            <Select value={topic} onValueChange={value=>{setTopic(value);setTag("全部标签");}}><SelectTrigger className="scene-select" data-tone={topic==="全部用途"?undefined:topicTone(topic)} aria-label="按用途分类"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="全部用途">全部用途</SelectItem>{availableTopics.map(item=><SelectItem key={item} value={item} className="topic-option" data-tone={topicTone(item)}>{item} · {typeResources.filter(resource=>topicOf(resource)===item).length}</SelectItem>)}</SelectContent></Select>
           </div>
           <div className="filter-row">
             <Tabs value={category} onValueChange={chooseType}><TabsList className="category-tabs" aria-label="资源类型"><span className="category-indicator" aria-hidden="true"/>{categories.map(item=>{const Icon=icons[item]||FolderOpen;return <TabsTrigger key={item} value={item}><Icon size={15} aria-hidden="true"/>{item}<span>{resources.filter(resource=>(item==="全部"||resource.category===item)&&(!onlyFavorites||favorites.includes(resource.id))).length}</span></TabsTrigger>;})}</TabsList></Tabs>
             <label className="quality-filter"><select aria-label="资源排序" value={sort} onChange={event=>setSort(event.target.value)}><option>默认排序</option><option>最近更新</option></select></label>
           </div>
-          <div className="topic-shortcuts" aria-label="用途分类快捷筛选"><button className={topic==="全部用途"?"active":""} aria-pressed={topic==="全部用途"} onClick={()=>{setTopic("全部用途");setTag("全部标签");}}>全部用途<span>{typeResources.length}</span></button>{availableTopics.map(item=><button key={item} className={topic===item?"active":""} aria-pressed={topic===item} onClick={()=>{setTopic(item);setTag("全部标签");}}>{item}<span>{typeResources.filter(resource=>topicOf(resource)===item).length}</span></button>)}</div>
+          <div className="topic-shortcuts" aria-label="用途分类快捷筛选"><button className={topic==="全部用途"?"active":""} aria-pressed={topic==="全部用途"} onClick={()=>{setTopic("全部用途");setTag("全部标签");}}>全部用途<span>{typeResources.length}</span></button>{availableTopics.map(item=><button key={item} data-tone={topicTone(item)} className={topic===item?"active":""} aria-pressed={topic===item} onClick={()=>{setTopic(item);setTag("全部标签");}}>{item}<span>{typeResources.filter(resource=>topicOf(resource)===item).length}</span></button>)}</div>
+          {(category==="全部"||category==="提示词")&&<div className="prompt-color-legend" aria-label="提示词用途配色"><small>提示词配色</small>{promptColorLegend.map(item=><span key={item.tone} data-tone={item.tone}>{item.label}</span>)}</div>}
           {tags.length>0&&<details className="tag-filter"><summary>细分标签{tag!=="全部标签"&&" · "+tag}</summary><div className="tags"><button className={tag==="全部标签"?"chosen":""} aria-pressed={tag==="全部标签"} onClick={()=>setTag("全部标签")}>全部标签</button>{tags.map(item=><button key={item} className={tag===item?"chosen":""} aria-pressed={tag===item} onClick={()=>setTag(item)}>{item}</button>)}</div></details>}
           {activeFilters&&<div className="active-filter-row" aria-label="已应用的筛选">
             {category!=="全部"&&<button onClick={()=>chooseType("全部")} aria-label={"移除类型筛选 "+category}>{category}<X size={12} aria-hidden="true"/></button>}
-            {topic!=="全部用途"&&<button onClick={()=>{setTopic("全部用途");setTag("全部标签");}} aria-label={"移除用途筛选 "+topic}>{topic}<X size={12} aria-hidden="true"/></button>}
+            {topic!=="全部用途"&&<button data-tone={topicTone(topic)} onClick={()=>{setTopic("全部用途");setTag("全部标签");}} aria-label={"移除用途筛选 "+topic}>{topic}<X size={12} aria-hidden="true"/></button>}
             {tag!=="全部标签"&&<button onClick={()=>setTag("全部标签")} aria-label={"移除标签筛选 "+tag}>{tag}<X size={12} aria-hidden="true"/></button>}
             {query.trim()&&<button onClick={()=>setQuery("")} aria-label="移除搜索筛选">搜索：{query}<X size={12} aria-hidden="true"/></button>}
             <button className="clear-all" onClick={resetFilters}>清除筛选</button>
@@ -148,7 +150,7 @@ export default function Hub({initialResources,storageUnavailable=false}:{initial
         <div className="list-heading"><h2>{topic!=="全部用途"?topic:category==="全部"?onlyFavorites?"已收藏的资料":"全部资料":category}</h2><div className="list-count"><span role="status" aria-live="polite" aria-atomic="true">找到 {filtered.length} 条资源</span><button className="mobile-contribute" onClick={()=>setSubmissionOpen(true)}>分享资料<Sparkles size={14} aria-hidden="true"/></button></div></div>
         <div className="resource-grid">{visible.map(resource=>{
           const Icon=icons[resource.category]||Bot,install=resource.category==="Skills"&&!!skillInstallPrompt(resource),isFavorite=favorites.includes(resource.id),pending=pendingFavorites.includes(resource.id);
-          return <div className="resource-slot" key={resource.id}><article className="resource-card" data-resource-id={resource.id}>
+          return <div className="resource-slot" key={resource.id}><article className="resource-card" data-resource-id={resource.id} data-tone={resourceTone(resource)}>
             <span className="card-serial" aria-hidden="true"/><span className="feedback-flash" aria-hidden="true"/>
             <DemoPreview demoUrl={resource.demoUrl} demoType={resource.demoType} title={resource.title} compact onOpen={()=>openResource(resource)}/>
             <div className="card-top"><span className={"resource-icon type-"+resource.category}><Icon size={23} aria-hidden="true"/></span><span className="type-label">{resource.category}<small>{topicOf(resource)}</small></span><button className={isFavorite?"favorite is-favorite":"favorite"} aria-pressed={isFavorite} aria-busy={pending} data-copied={copied===resource.id+"favorite"} aria-label={(isFavorite?"取消收藏 ":"收藏 ")+resource.title} disabled={pending||sessionLoading||storageUnavailable} onClick={()=>toggleFavorite(resource)}>{pending?<LoaderCircle size={18} className="saving-icon" aria-hidden="true"/>:<Heart size={19} aria-hidden="true"/>}</button></div>
@@ -173,7 +175,7 @@ export default function Hub({initialResources,storageUnavailable=false}:{initial
       </aside>
     </main>
     <footer><span>TK 的 AI 工具箱 <span className="footer-flower" aria-hidden="true">✦</span>分类 · 收藏 · 中英对照</span><div>{socialLinks.map(([name,url])=><a key={name} href={url} target="_blank" rel="noopener noreferrer">{name}</a>)}</div></footer>
-    <Sheet open={!!selected} onOpenChange={value=>{if(!value)setSelected(null);}}><SheetContent className="resource-sheet archive-detail" data-motion={motionEnabled?"active":"disabled"} onCloseAutoFocus={event=>{if(detailTriggerRef.current?.isConnected){event.preventDefault();detailTriggerRef.current.focus({preventScroll:true});}}}>
+    <Sheet open={!!selected} onOpenChange={value=>{if(!value)setSelected(null);}}><SheetContent className="resource-sheet archive-detail" data-tone={selected?resourceTone(selected):undefined} data-motion={motionEnabled?"active":"disabled"} onCloseAutoFocus={event=>{if(detailTriggerRef.current?.isConnected){event.preventDefault();detailTriggerRef.current.focus({preventScroll:true});}}}>
       {selected&&<><SheetHeader><span className="type-label">{selected.category} · {topicOf(selected)}</span><SheetTitle className="detail-title">{selected.title}</SheetTitle><SheetDescription>{selected.description}</SheetDescription></SheetHeader><div className="detail-body">
         <div className="detail-toolbar"><button className="secondary-button" disabled={pendingFavorites.includes(selected.id)||sessionLoading||storageUnavailable} aria-pressed={favorites.includes(selected.id)} onClick={()=>toggleFavorite(selected)}><Heart size={16} aria-hidden="true"/>{pendingFavorites.includes(selected.id)?"正在保存…":favorites.includes(selected.id)?"已收藏":"收藏资料"}</button>{selected.url&&<a className="secondary-button" href={selected.url} target="_blank" rel="noopener noreferrer">打开来源<ExternalLink size={16} aria-hidden="true"/></a>}</div>
         <div className="tags">{selected.tags.map(item=><span key={item}>{item}</span>)}</div>

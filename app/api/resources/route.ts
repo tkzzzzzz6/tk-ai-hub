@@ -1,10 +1,8 @@
-import {demoFormFields} from "@/lib/demo-validation";
-import {topics,inferTopic,topicOf} from "@/lib/taxonomy";
-import {z} from "zod";
+import {resourceForm} from "@/lib/resource-schema";
+import {inferTopic,topicOf} from "@/lib/taxonomy";
 import {requireUser,protectOrigin,ApiError,errorResponse} from "@/lib/auth";
 import {db,listResources,getResource} from "@/lib/store";
 import {canonicalUrl,fingerprint,similarity} from "@/lib/dedupe";
-export const resourceForm=z.object({...demoFormFields,id:z.string().max(100).optional(),submissionId:z.string().uuid().optional(),title:z.string().trim().min(1).max(120),category:z.enum(["提示词","Skills","MCP"]),topic:z.enum(topics).optional(),description:z.string().trim().min(1).max(1500),url:z.string().max(2000),tags:z.array(z.string().trim().min(1).max(40)).max(10),content:z.string().max(50000),titleEn:z.string().trim().max(120).default(""),descriptionEn:z.string().trim().max(1500).default(""),contentEn:z.string().trim().max(50000).default(""),source:z.string().trim().min(1).max(150),status:z.enum(["pending","published","hidden","rejected","deleted"]),revision:z.number().int().positive().optional()});
 export const dynamic="force-dynamic";
 export async function GET(request:Request){try{const all=new URL(request.url).searchParams.get("all")==="1";if(all)await requireUser(true);return Response.json({resources:await listResources(all)},{headers:{"Cache-Control":"no-store"}});}catch(error){return errorResponse(error);}}
 export async function POST(request:Request){try{

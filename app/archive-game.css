@@ -365,6 +365,17 @@
 }
 
 /* Reduced motion changes duration only; the final face remains functional. */
+.prompt-placeholder { padding:1px 3px; border:1px solid #b9cfe4; border-radius:2px; background:#d9e7f4; color:#0b3159; font-weight:650; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
+.archive-shell .template-card-hint { margin:-5px 0 12px; color:#1565b4; font-size:.73rem; line-height:1.7; }
+.archive-detail .prompt-parameters { margin:0 0 14px; padding:12px; border:1px solid #d9e7f4; border-left:3px solid #1565b4; border-radius:2px; background:#edf4fb; }
+.archive-detail .prompt-parameters>strong { color:#0b3159; font-size:.8rem; }
+.archive-detail .prompt-parameters p { color:#526b84; font-size:.77rem; line-height:1.8; margin:5px 0 8px; }
+.archive-detail .prompt-parameters dl { margin:0; font-size:.8rem; }
+.archive-detail .prompt-parameters dl>div { display:flex; flex-wrap:wrap; gap:4px 10px; }
+.archive-detail .prompt-parameters dt { color:#1565b4; font-weight:650; }
+.archive-detail .prompt-parameters dd { margin:0; color:#0b3159; overflow-wrap:anywhere; }
+.archive-detail .resource-export-link { display:inline-flex; align-items:center; gap:7px; min-height:44px; margin-bottom:14px; padding:8px 12px; }
+
 .archive-detail:is([data-motion="paused"],[data-motion="reduced"],[data-motion="disabled"]),body:has(.archive-shell[data-motion="disabled"]) :is([data-slot="sheet-overlay"],[data-slot="dialog-overlay"],[data-slot="dialog-content"]) { animation:none!important; transition:none!important; }
 html:has(.archive-shell[data-motion="disabled"]) { scroll-behavior:auto; }
 .archive-shell:is([data-motion="paused"],[data-motion="reduced"],[data-motion="disabled"]) *,

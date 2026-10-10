@@ -1,0 +1,31 @@
+{
+  "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill": {
+    "downloadUrl": "/skills/ui-ux-pro-max-50d8a7de.zip",
+    "downloadLabel": "下载原仓库 ZIP",
+    "commit": "50d8a7de0900119855614541f15a1a616691eb33",
+    "packagedAt": "2026-10-10",
+    "kind": "repository"
+  },
+  "https://github.com/greensock/gsap-skills": {
+    "downloadUrl": "/skills/gsap-skills-aed9cfd3.zip",
+    "downloadLabel": "下载完整合集 ZIP",
+    "commit": "aed9cfd3277740755f6bfc1155c7aa645403b760",
+    "packagedAt": "2026-10-10",
+    "kind": "collection",
+    "installTarget": {
+      "zh": "安装 GSAP 官方技能合集中的全部 8 个技能",
+      "en": "install all 8 skills in the official GSAP collection"
+    }
+  },
+  "https://github.com/anthropics/skills/blob/main/skills/frontend-design/SKILL.md": {
+    "downloadUrl": "/skills/frontend-design-dbd4588f.zip",
+    "downloadLabel": "下载技能包 ZIP",
+    "commit": "dbd4588f9e1033efb41dad4bef2f7947c8993d44",
+    "packagedAt": "2026-10-10",
+    "kind": "skill",
+    "installTarget": {
+      "zh": "仅安装 skills/frontend-design 这一个技能，不安装仓库中的其他技能",
+      "en": "install only the skills/frontend-design skill, not the other skills in the repository"
+    }
+  }
+}

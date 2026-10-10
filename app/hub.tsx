@@ -1,6 +1,6 @@
 "use client";
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
-import {Search,Sparkles,BookOpen,Heart,ExternalLink,Copy,UserRound,ShieldCheck,Layers,WandSparkles,Puzzle,Bot,Check,FolderOpen,Orbit,Pause,Play,X,Archive} from "lucide-react";
+import {Search,Sparkles,BookOpen,Heart,ExternalLink,Copy,UserRound,ShieldCheck,Layers,WandSparkles,Puzzle,Bot,Check,FolderOpen,Orbit,Pause,Play,X,Archive,Download} from "lucide-react";
 import {Tabs,TabsList,TabsTrigger} from "@/components/ui/tabs";
 import {Sheet,SheetContent,SheetHeader,SheetTitle,SheetDescription} from "@/components/ui/sheet";
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from "@/components/ui/dialog";
@@ -18,6 +18,8 @@ import SubmissionDialog from "./submission-dialog";
 import ArchiveHero from "./archive-hero";
 import ResourceCard from "./resource-card";
 import {useLibraryMotion} from "./library-motion";
+import {PromptParameters,PromptText} from "./prompt-content";
+import {promptArguments,promptForCopy} from "@/lib/prompt-template";
 
 const icons:Record<string,typeof Bot>={"提示词":WandSparkles,Skills:Puzzle,MCP:Layers};
 const motionPreferenceKey="tk-ai-hub:motion";
@@ -103,11 +105,14 @@ export default function Hub({initialResources,storageUnavailable=false}:{initial
     browseLibrary();
   }
   async function copy(resource:Resource,language:"zh"|"en"="zh",install=false){
-    const text=install?skillInstallPrompt(resource,language):language==="en"?resource.contentEn:resource.content;
+    const raw=install?skillInstallPrompt(resource,language):language==="en"?resource.contentEn:resource.content;
+    const text=raw&&!install&&resource.category==="提示词"?promptForCopy(raw):raw;
     if(!text){toast.error(install?"请先补充有效的 HTTPS 来源链接":"这个语言版本还未补齐");return;}
     try{
       await navigator.clipboard.writeText(text);setCopied(resource.id+(install?"install":"")+language);setFeedbackVersion(previous=>previous+1);
-      toast.success(install?language==="zh"?"已复制中文安装指令，粘贴给 Agent 即可":"English installation instruction copied":language==="en"?"已复制英文版":"已复制中文版");
+      const message=install?language==="zh"?"已复制中文安装指令，粘贴给 Agent 即可":"English installation instruction copied":language==="en"?"已复制英文版":"已复制中文版";
+      const marked=!install&&resource.category==="提示词"&&promptArguments(raw||"").length>0;
+      toast.success(message+(marked?language==="zh"?"，请替换 {{…}} 中的内容":" — replace the content inside {{…}}":""));
     }catch{toast.error("复制失败，请在详情中选中正文复制");}
   }
 
@@ -159,14 +164,15 @@ export default function Hub({initialResources,storageUnavailable=false}:{initial
         {user&&["owner","admin"].includes(user.role)&&<a className="admin-link" href="/admin"><ShieldCheck size={17} aria-hidden="true"/>内容管理</a>}
       </aside>
     </main>
-    <footer><span>TK 的 AI 工具箱 <span className="footer-flower" aria-hidden="true">✦</span>分类 · 收藏 · 中英对照</span><div>{socialLinks.map(([name,url])=><a key={name} href={url} target="_blank" rel="noopener noreferrer">{name}</a>)}</div></footer>
+    <footer><span>TK 的 AI 工具箱 <span className="footer-flower" aria-hidden="true">✦</span>分类 · 收藏 · 中英对照</span><div><a href="/api/resources/export" download>导出公开资源 JSON</a>{socialLinks.map(([name,url])=><a key={name} href={url} target="_blank" rel="noopener noreferrer">{name}</a>)}</div></footer>
     <Sheet open={!!selected} onOpenChange={value=>{if(!value)setSelected(null);}}><SheetContent className="resource-sheet archive-detail" data-tone={selected?resourceTone(selected):undefined} data-motion={motionEnabled?"active":"disabled"} onCloseAutoFocus={event=>{if(detailTriggerRef.current?.isConnected){event.preventDefault();detailTriggerRef.current.focus({preventScroll:true});}}}>
       {selected&&<><SheetHeader><span className="type-label">{selected.category} · {topicOf(selected)}</span><SheetTitle className="detail-title">{selected.title}</SheetTitle><SheetDescription>{selected.description}</SheetDescription></SheetHeader><div className="detail-body">
         <div className="detail-toolbar"><button className="secondary-button" disabled={pendingFavorites.includes(selected.id)||sessionLoading||storageUnavailable} aria-pressed={favorites.includes(selected.id)} onClick={()=>toggleFavorite(selected)}><Heart size={16} aria-hidden="true"/>{pendingFavorites.includes(selected.id)?"正在保存…":favorites.includes(selected.id)?"已收藏":"收藏资料"}</button>{selected.url&&<a className="secondary-button" href={selected.url} target="_blank" rel="noopener noreferrer">打开来源<ExternalLink size={16} aria-hidden="true"/></a>}</div>
+        <a className="secondary-button resource-export-link" href={"/api/resources/export?id="+encodeURIComponent(selected.id)} download><Download size={16} aria-hidden="true"/>导出 JSON</a>
         <div className="tags">{selected.tags.map(item=><span key={item}>{item}</span>)}</div>
         {selected.category==="Skills"&&<SkillInstallPanel key={selected.id} resource={selected}/>}
         <DemoPreview demoUrl={selected.demoUrl} demoType={selected.demoType} title={selected.title}/>
-        <div className="bilingual-columns"><section lang="zh-CN"><div className="language-heading"><h3>中文版</h3><span>中文</span></div><p className="language-title">{selected.title}</p><pre tabIndex={0}>{selected.content}</pre><button className="primary-button" data-copied={copied===selected.id+"zh"} onClick={()=>copy(selected,"zh")}>{copied===selected.id+"zh"?<Check size={16} aria-hidden="true"/>:<Copy size={16} aria-hidden="true"/>}复制中文版</button></section><section lang="en"><div className="language-heading"><h3>English</h3><span>EN</span></div><p className="language-title">{selected.titleEn}</p><pre tabIndex={0}>{selected.contentEn||"English translation is pending."}</pre><button className="primary-button" disabled={!selected.contentEn} data-copied={copied===selected.id+"en"} onClick={()=>copy(selected,"en")}>{copied===selected.id+"en"?<Check size={16} aria-hidden="true"/>:<Copy size={16} aria-hidden="true"/>}Copy English</button></section></div>
+        <div className="bilingual-columns"><section lang="zh-CN"><div className="language-heading"><h3>中文版</h3><span>中文</span></div><p className="language-title">{selected.title}</p>{selected.category==="提示词"&&<PromptParameters text={selected.content} language="zh"/>}<pre tabIndex={0}><PromptText text={selected.content} enabled={selected.category==="提示词"}/></pre><button className="primary-button" data-copied={copied===selected.id+"zh"} onClick={()=>copy(selected,"zh")}>{copied===selected.id+"zh"?<Check size={16} aria-hidden="true"/>:<Copy size={16} aria-hidden="true"/>}复制中文版</button></section><section lang="en"><div className="language-heading"><h3>English</h3><span>EN</span></div><p className="language-title">{selected.titleEn}</p>{selected.category==="提示词"&&<PromptParameters text={selected.contentEn||""} language="en"/>}<pre tabIndex={0}><PromptText text={selected.contentEn||"English translation is pending."} enabled={selected.category==="提示词"}/></pre><button className="primary-button" disabled={!selected.contentEn} data-copied={copied===selected.id+"en"} onClick={()=>copy(selected,"en")}>{copied===selected.id+"en"?<Check size={16} aria-hidden="true"/>:<Copy size={16} aria-hidden="true"/>}Copy English</button></section></div>
         <p className="source-note">来源：{selected.source}{selected.updatedAt&&" · 更新于 "+new Date(selected.updatedAt).toLocaleDateString("zh-CN",{timeZone:"Asia/Shanghai"})}</p>
       </div></>}
     </SheetContent></Sheet>

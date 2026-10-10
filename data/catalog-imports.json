@@ -1,0 +1,28 @@
+[
+  {
+    "key": "owner-intake:algo-coach:1.1",
+    "resourceIds": [
+      "algo-coach"
+    ],
+    "status": "pending",
+    "dedupeSourceUrl": false
+  },
+  {
+    "key": "owner-intake:frontend-skills:2026-10-10:v1",
+    "resourceIds": [
+      "owner-skill-ui-ux-pro-max",
+      "owner-skill-gsap-collection",
+      "owner-skill-frontend-design"
+    ],
+    "status": "published",
+    "dedupeSourceUrl": true
+  },
+  {
+    "key": "owner-intake:minimal-doodle-action-chain:2026-10-10:v1",
+    "resourceIds": [
+      "minimal-doodle-action-chain"
+    ],
+    "status": "published",
+    "dedupeSourceUrl": false
+  }
+]

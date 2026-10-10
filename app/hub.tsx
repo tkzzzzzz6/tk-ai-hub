@@ -1,6 +1,6 @@
 "use client";
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
-import {Search,Sparkles,BookOpen,Heart,ExternalLink,Copy,UserRound,ShieldCheck,Layers,WandSparkles,Puzzle,Bot,Check,FolderOpen,Orbit,Pause,Play,X,LoaderCircle} from "lucide-react";
+import {Search,Sparkles,BookOpen,Heart,ExternalLink,Copy,UserRound,ShieldCheck,Layers,WandSparkles,Puzzle,Bot,Check,FolderOpen,Orbit,Pause,Play,X} from "lucide-react";
 import {Tabs,TabsList,TabsTrigger} from "@/components/ui/tabs";
 import {Sheet,SheetContent,SheetHeader,SheetTitle,SheetDescription} from "@/components/ui/sheet";
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from "@/components/ui/dialog";
@@ -16,6 +16,7 @@ import DemoPreview from "./demo-preview";
 import SkillInstallPanel from "./skill-install-panel";
 import SubmissionDialog from "./submission-dialog";
 import ArchiveHero from "./archive-hero";
+import ResourceCard from "./resource-card";
 import {useLibraryMotion} from "./library-motion";
 
 const icons:Record<string,typeof Bot>={"提示词":WandSparkles,Skills:Puzzle,MCP:Layers};
@@ -148,21 +149,7 @@ export default function Hub({initialResources,storageUnavailable=false}:{initial
           </div>}
         </div>
         <div className="list-heading"><h2>{topic!=="全部用途"?topic:category==="全部"?onlyFavorites?"已收藏的资料":"全部资料":category}</h2><div className="list-count"><span role="status" aria-live="polite" aria-atomic="true">找到 {filtered.length} 条资源</span><button className="mobile-contribute" onClick={()=>setSubmissionOpen(true)}>分享资料<Sparkles size={14} aria-hidden="true"/></button></div></div>
-        <div className="resource-grid">{visible.map(resource=>{
-          const Icon=icons[resource.category]||Bot,install=resource.category==="Skills"&&!!skillInstallPrompt(resource),isFavorite=favorites.includes(resource.id),pending=pendingFavorites.includes(resource.id);
-          return <div className="resource-slot" key={resource.id}><article className="resource-card" data-resource-id={resource.id} data-tone={resourceTone(resource)}>
-            <span className="card-serial" aria-hidden="true"/><span className="feedback-flash" aria-hidden="true"/>
-            <DemoPreview demoUrl={resource.demoUrl} demoType={resource.demoType} title={resource.title} compact onOpen={()=>openResource(resource)}/>
-            <div className="card-top"><span className={"resource-icon type-"+resource.category}><Icon size={23} aria-hidden="true"/></span><span className="type-label">{resource.category}<small>{topicOf(resource)}</small></span><button className={isFavorite?"favorite is-favorite":"favorite"} aria-pressed={isFavorite} aria-busy={pending} data-copied={copied===resource.id+"favorite"} aria-label={(isFavorite?"取消收藏 ":"收藏 ")+resource.title} disabled={pending||sessionLoading||storageUnavailable} onClick={()=>toggleFavorite(resource)}>{pending?<LoaderCircle size={18} className="saving-icon" aria-hidden="true"/>:<Heart size={19} aria-hidden="true"/>}</button></div>
-            <button className="card-title" onClick={()=>openResource(resource)}>{resource.title}</button>
-            <p>{resource.description}</p>
-            <div className="tags">{resource.tags.slice(0,3).map(item=><button key={item} aria-pressed={tag===item} onClick={()=>setTag(item)}>{item}</button>)}</div>
-            <div className="card-bottom">
-              {install?<div className="copy-options skill-card-install"><button data-copied={copied===resource.id+"installzh"} onClick={()=>copy(resource,"zh",true)} aria-label={"复制 "+resource.title+" 中文安装指令"}>{copied===resource.id+"installzh"?<Check size={15} aria-hidden="true"/>:<Copy size={15} aria-hidden="true"/>}安装指令</button><button data-copied={copied===resource.id+"installen"} onClick={()=>copy(resource,"en",true)} aria-label={"复制 "+resource.title+" 英文安装指令"}>{copied===resource.id+"installen"?<Check size={15} aria-hidden="true"/>:<Copy size={15} aria-hidden="true"/>}EN</button></div>:["提示词","Skills"].includes(resource.category)?<div className="copy-options"><button data-copied={copied===resource.id+"zh"} onClick={()=>copy(resource,"zh")} aria-label={"复制 "+resource.title+" 中文版"}>{copied===resource.id+"zh"?<Check size={15} aria-hidden="true"/>:<Copy size={15} aria-hidden="true"/>}中文</button><button data-copied={copied===resource.id+"en"} onClick={()=>copy(resource,"en")} disabled={!resource.contentEn} aria-label={"复制 "+resource.title+" 英文版"}>{copied===resource.id+"en"?<Check size={15} aria-hidden="true"/>:<Copy size={15} aria-hidden="true"/>}English</button></div>:<a href={resource.url} target="_blank" rel="noopener noreferrer">查看来源<ExternalLink size={14} aria-hidden="true"/></a>}
-              <button className="card-action" onClick={()=>openResource(resource)}>查看内容<BookOpen size={15} aria-hidden="true"/></button>
-            </div>
-          </article></div>;
-        })}</div>
+        <div className="resource-grid">{visible.map(resource=><ResourceCard key={resource.id} resource={resource} isFavorite={favorites.includes(resource.id)} pending={pendingFavorites.includes(resource.id)} favoriteUnavailable={sessionLoading||storageUnavailable} selectedTag={tag} copied={copied} onFavorite={resource=>void toggleFavorite(resource)} onTag={setTag} onCopy={(resource,language,install)=>void copy(resource,language,install)} onOpen={openResource}/>)}</div>
         {filtered.length>0&&pageCount>1&&<nav className="pagination" aria-label="资源分页"><button disabled={currentPage===1} onClick={()=>setPage(currentPage-1)}>上一页</button><span>{currentPage} / {pageCount}</span><button disabled={currentPage===pageCount} onClick={()=>setPage(currentPage+1)}>下一页</button></nav>}
         {!filtered.length&&<div className="empty"><Search size={30} aria-hidden="true"/><h3>{!resources.length?"这里还没有收录资料":onlyFavorites&&!favorites.length?"收藏你的第一条资源":"没有找到匹配的资源"}</h3><p>{!resources.length?"分享一份你真正想收藏的资料，整理与审核后就会出现在这里。":onlyFavorites&&!favorites.length?"在资源卡片上点击爱心，把喜欢的内容留在手边。":"试试其他用途、标签或关键词。"}</p>{!resources.length?<button className="secondary-button" onClick={()=>setSubmissionOpen(true)}>分享第一份资料</button>:onlyFavorites&&!favorites.length?<button className="secondary-button" onClick={showLibrary}>浏览资源库</button>:<button className="secondary-button" onClick={resetFilters}>清除筛选</button>}</div>}
       </section>

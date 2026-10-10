@@ -8,7 +8,7 @@ gsap.registerPlugin(useGSAP);
 
 type MotionOptions={enabled:boolean;resultsKey:string;feedbackKey:string};
 type QuickTween=ReturnType<typeof gsap.quickTo>;
-type CardMotion={rotationX:QuickTween;rotationY:QuickTween;y:QuickTween;scale:QuickTween};
+type CardMotion={rotationX:QuickTween;rotationY:QuickTween;y:QuickTween;scaleX:QuickTween;scaleY:QuickTween};
 const reducedMotion="(prefers-reduced-motion: reduce)";
 const finePointer="(hover: hover) and (pointer: fine)";
 const clamp=(value:number)=>Math.min(1,Math.max(0,value));
@@ -119,9 +119,12 @@ export function useLibraryMotion({enabled,resultsKey,feedbackKey}:MotionOptions)
     let state=cards.get(element);
     if(!state){
      pruneCards();
-     gsap.set(element,{transformPerspective:900,transformOrigin:"50% 50%",willChange:"transform"});
-     const options={duration:.45,ease:"power3.out",overwrite:"auto" as const};
-     state={rotationX:gsap.quickTo(element,"rotationX",options),rotationY:gsap.quickTo(element,"rotationY",options),y:gsap.quickTo(element,"y",options),scale:gsap.quickTo(element,"scale",options)};
+     gsap.set(element,{transformPerspective:1050,transformOrigin:"50% 50%",willChange:"transform"});
+     const tilt={duration:.28,ease:"power3.out",overwrite:"auto" as const};
+     const spring={duration:.4,ease:"back.out(1.35)",overwrite:"auto" as const};
+     // CSS owns the inner flip; these reusable tweens only move the outer card.
+     // Separate scale axes avoid quickTo's unsupported scale alias reset path.
+     state={rotationX:gsap.quickTo(element,"rotationX",tilt),rotationY:gsap.quickTo(element,"rotationY",tilt),y:gsap.quickTo(element,"y",spring),scaleX:gsap.quickTo(element,"scaleX",spring),scaleY:gsap.quickTo(element,"scaleY",spring)};
      cards.set(element,state);
     }
     return state;
@@ -129,7 +132,7 @@ export function useLibraryMotion({enabled,resultsKey,feedbackKey}:MotionOptions)
    function rest(element:HTMLElement){
     const state=cards.get(element);
     if(!state)return;
-    state.rotationX(0);state.rotationY(0);state.y(0);state.scale(1);
+    state.rotationX(0);state.rotationY(0);state.y(0);state.scaleX(1);state.scaleY(1);
     element.style.removeProperty("will-change");
    }
    const move=safe((event:PointerEvent)=>{
@@ -146,20 +149,21 @@ export function useLibraryMotion({enabled,resultsKey,feedbackKey}:MotionOptions)
     element.style.setProperty("--pointer-y",`${y*100}%`);
     element.style.willChange="transform";
     const state=cardState(element);
-    state.rotationX((.5-y)*6);state.rotationY((x-.5)*6);
-    state.y(pressed?-1:-4);state.scale(pressed?.985:1.006);
+    const depth=pressed?11:18,scale=pressed?.975:1.018;
+    state.rotationX((.5-y)*depth);state.rotationY((x-.5)*depth);
+    state.y(pressed?-2:-10);state.scaleX(scale);state.scaleY(scale);
    });
    const leave=safe(()=>{if(active)rest(active);active=null;pressed=false;});
    const down=safe((event:PointerEvent)=>{
     move(event);
     if(!pointer||event.pointerType==="touch"||!active)return;
     pressed=true;
-    const state=cardState(active);state.y(-1);state.scale(.985);
+    const state=cardState(active);state.y(-2);state.scaleX(.975);state.scaleY(.975);
    });
    const up=safe(()=>{
     pressed=false;
     if(!pointer||document.hidden||!active)return;
-    const state=cardState(active);state.y(-4);state.scale(1.006);
+    const state=cardState(active);state.y(-10);state.scaleX(1.018);state.scaleY(1.018);
    });
    if(pointer){
     root.addEventListener("pointermove",move,{passive:true});
@@ -255,7 +259,7 @@ export function useLibraryMotion({enabled,resultsKey,feedbackKey}:MotionOptions)
   if(!root||!enabled||!feedbackKey||document.hidden)return;
   const buttons=root.querySelectorAll<HTMLElement>("[data-copied=true]");
   if(!buttons.length)return;
-  const flashes=Array.from(new Set(Array.from(buttons).map(button=>button.closest(".resource-card")?.querySelector<HTMLElement>(".feedback-flash")).filter((flash):flash is HTMLElement=>Boolean(flash))));
+  const flashes=Array.from(new Set(Array.from(buttons).map(button=>(button.closest(".card-face")||button.closest(".resource-card"))?.querySelector<HTMLElement>(".feedback-flash")).filter((flash):flash is HTMLElement=>Boolean(flash))));
   const media=gsap.matchMedia();
   media.add("(prefers-reduced-motion: no-preference)",()=>{
    const animations:gsap.core.Animation[]=[gsap.fromTo(buttons,{scale:.94},{scale:1,duration:.32,ease:"back.out(2)",clearProps:"transform",overwrite:"auto"})];

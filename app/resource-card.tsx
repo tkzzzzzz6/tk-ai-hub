@@ -1,7 +1,7 @@
 "use client";
 
 import {useId,useLayoutEffect,useRef,useState} from "react";
-import {BookOpen,Bot,Check,Copy,ExternalLink,Heart,Layers,LoaderCircle,Puzzle,RotateCcw,Rotate3D,WandSparkles} from "lucide-react";
+import {BookOpen,Bot,Check,Copy,ExternalLink,Heart,Layers,LoaderCircle,Puzzle,RotateCcw,WandSparkles} from "lucide-react";
 import type {Resource} from "@/lib/catalog";
 import {topicOf} from "@/lib/taxonomy";
 import {resourceTone} from "@/lib/resource-tones";
@@ -42,9 +42,9 @@ export default function ResourceCard({resource,isFavorite,pending,favoriteUnavai
     (flipped?returnRef.current:titleRef.current)?.focus({preventScroll:true});
   },[flipped]);
   function bodyClick(event:React.MouseEvent<HTMLElement>){
-    if(flipped||!(event.target instanceof Element)||event.target.closest("button,a,input,textarea,select,summary,video,[role=button],[data-no-flip]"))return;
+    if(!(event.target instanceof Element)||event.target.closest("button,a,input,textarea,select,summary,video,[role=button],[data-no-flip]"))return;
     if(window.getSelection()?.toString())return;
-    flip(true);
+    flip(!flipped);
   }
   function copyOptions(back=false){
     const active=back?flipped:!flipped;
@@ -70,15 +70,15 @@ export default function ResourceCard({resource,isFavorite,pending,favoriteUnavai
         <div className="tags">{resource.tags.slice(0,3).map(item=><button type="button" key={item} aria-pressed={selectedTag===item} onClick={()=>onTag(item)}>{item}</button>)}</div>
         <div className="card-bottom">
           {install||["提示词","Skills"].includes(resource.category)?copyOptions():<a href={resource.url} target="_blank" rel="noopener noreferrer">查看来源<ExternalLink size={14} aria-hidden="true"/></a>}
-          <button type="button" className="card-action" aria-label={"翻转查看 "+resource.title} aria-controls={backId} aria-expanded={flipped} onClick={()=>flip(true)}>翻转查看<Rotate3D size={16} aria-hidden="true"/></button>
+          <button type="button" className="card-action" aria-label={"展开详情 "+resource.title} onClick={()=>onOpen(resource)}>展开详情<BookOpen size={15} aria-hidden="true"/></button>
         </div>
       </div>
       <div id={backId} className="card-face card-back" aria-hidden={!flipped} inert={!flipped}>
         <span className="feedback-flash" aria-hidden="true"/>
-        <div className="card-back-header"><div><span className="card-back-label">{install?"安装指令":resource.category==="提示词"?"提示词预览":"使用说明"}</span><h3>{resource.title}</h3></div><button type="button" ref={returnRef} className="flip-return" aria-label={"翻回 "+resource.title} onClick={()=>flip(false)}><RotateCcw size={17} aria-hidden="true"/>翻回</button></div>
+        <div className="card-back-header"><div><span className="card-back-label">{install?"安装指令":resource.category==="提示词"?"提示词预览":"使用说明"}</span><h3><button type="button" className="card-back-title" onClick={()=>flip(false)}>{resource.title}</button></h3></div><button type="button" ref={returnRef} className="flip-return" aria-label={"翻回 "+resource.title} onClick={()=>flip(false)}><RotateCcw size={17} aria-hidden="true"/>翻回</button></div>
         <div className="card-language-tabs" role="group" aria-label={resource.title+"预览语言"}><button type="button" aria-pressed={language==="zh"} onClick={()=>setLanguage("zh")}>中文</button><button type="button" aria-pressed={language==="en"} disabled={!hasEnglish} onClick={()=>setLanguage("en")}>English</button></div>
         <pre className="card-preview-text" lang={language==="zh"?"zh-CN":"en"} tabIndex={0}>{preview||"正文暂未补齐，可展开详情查看来源。"}</pre>
-        <div className="card-back-footer">{copyOptions(true)}<button type="button" className="card-action" onClick={()=>onOpen(resource)}>展开详情<BookOpen size={15} aria-hidden="true"/></button></div>
+        <div className="card-back-footer">{copyOptions(true)}<button type="button" className="card-action" aria-label={"展开详情 "+resource.title} onClick={()=>onOpen(resource)}>展开详情<BookOpen size={15} aria-hidden="true"/></button></div>
       </div>
     </div></div>
   </article></div>;

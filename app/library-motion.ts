@@ -9,6 +9,7 @@ gsap.registerPlugin(useGSAP);
 type MotionOptions={enabled:boolean;resultsKey:string;feedbackKey:string};
 type QuickTween=ReturnType<typeof gsap.quickTo>;
 type CardMotion={rotationX:QuickTween;rotationY:QuickTween;y:QuickTween;scaleX:QuickTween;scaleY:QuickTween};
+type CaseMotion={y:QuickTween;z:QuickTween;scaleX:QuickTween;scaleY:QuickTween};
 const reducedMotion="(prefers-reduced-motion: reduce)";
 const finePointer="(hover: hover) and (pointer: fine)";
 const clamp=(value:number)=>Math.min(1,Math.max(0,value));
@@ -45,10 +46,14 @@ export function useLibraryMotion({enabled,resultsKey,feedbackKey}:MotionOptions)
    const ambient=new Set<gsap.core.Animation>();
    const paused=new Set<gsap.core.Animation>();
    const cards=new Map<HTMLElement,CardMotion>();
+   const cases=new Map<HTMLElement,CaseMotion>();
    const heroRegion=root.querySelector<HTMLElement>(".hero-stage")||root.querySelector<HTMLElement>(".archive-hero");
+   const heroStack=root.querySelector<HTMLElement>(".archive-stack");
    const heroBox=heroRegion?.getBoundingClientRect();
    let heroVisible=!heroBox||(heroBox.bottom>0&&heroBox.right>0&&heroBox.top<window.innerHeight&&heroBox.left<window.innerWidth);
    let active:HTMLElement|null=null;
+   let activeCase:HTMLElement|null=null;
+   let stagePointerActive=false;
    let pressed=false;
    function track<T extends gsap.core.Animation>(animation:T):T{
     animations.add(animation);
@@ -74,24 +79,29 @@ export function useLibraryMotion({enabled,resultsKey,feedbackKey}:MotionOptions)
    function updateMode(){root!.dataset.motion=!enabled?"disabled":reduce?"reduced":document.hidden?"paused":"active";}
    updateMode();
 
-   // One shared entrance is the signature moment; controls remain usable throughout.
+   // Files slide into their slots, then the labels reveal. Every control is live
+   // during assembly; the scene never blocks browsing with a simulated boot screen.
    if(motion&&!document.hidden&&!heroPlayed.current){
     const stage=root.querySelector<HTMLElement>(".hero-stage");
     const copy=root.querySelectorAll<HTMLElement>(".hero-copy > *");
+    const cassettes=Array.from(root.querySelectorAll<HTMLElement>("[data-archive-case]")).reverse();
+    const labels=root.querySelectorAll<HTMLElement>(".case-label");
     if(stage||copy.length){
      const entry=gsap.timeline({defaults:{ease:"power3.out"}});
-     if(stage)entry.from(stage,{opacity:0,y:22,scale:.965,duration:.9,clearProps:"opacity,transform"},0);
-     if(copy.length)entry.from(copy,{opacity:0,y:13,duration:.55,stagger:.065,clearProps:"opacity,transform"},.14);
+     if(stage)entry.from(stage,{opacity:0,duration:.55,clearProps:"opacity"},0);
+     if(copy.length)entry.from(copy,{opacity:0,x:-18,duration:.55,stagger:.055,clearProps:"opacity,transform"},.05);
+     if(cassettes.length)entry.from(cassettes,{opacity:0,x:76,y:58,z:-100,rotationY:16,duration:.9,stagger:.13,clearProps:"opacity,transform"},.12);
+     if(labels.length)entry.from(labels,{opacity:0,x:9,duration:.36,stagger:.06,clearProps:"opacity,transform"},.72);
      track(entry);
      heroPlayed.current=true;
     }
    }
    if(motion){
-    root.querySelectorAll<HTMLElement>(".orbit-ring").forEach((ring,index)=>{
-     trackAmbient(gsap.to(ring,{rotation:index%2?"-=360":"+=360",duration:58+index*14,repeat:-1,ease:"none",transformOrigin:"50% 50%"}));
-    });
-    const crystals=root.querySelectorAll<HTMLElement>(".hero-crystal");
-    if(crystals.length)trackAmbient(gsap.to(crystals,{y:"+=7",rotation:"+=4",duration:3.7,stagger:.45,yoyo:true,repeat:-1,ease:"sine.inOut"}));
+    const orbit=root.querySelector<HTMLElement>(".stage-orbit");
+    const scan=root.querySelector<HTMLElement>(".stage-scan");
+    if(orbit)trackAmbient(gsap.to(orbit,{rotation:360,duration:38,repeat:-1,ease:"none",transformOrigin:"50% 50%"}));
+    if(heroStack)trackAmbient(gsap.to(heroStack,{y:8,duration:3.7,yoyo:true,repeat:-1,ease:"sine.inOut"}));
+    if(scan&&heroRegion)trackAmbient(gsap.to(scan,{x:()=>heroRegion.clientWidth*.72,duration:6.4,repeat:-1,yoyo:true,repeatRefresh:true,ease:"sine.inOut"}));
    }
    // Only decorative loops depend on hero visibility; discovery stays responsive below it.
    const heroObserver=motion&&heroRegion?new IntersectionObserver(entries=>{
@@ -101,6 +111,25 @@ export function useLibraryMotion({enabled,resultsKey,feedbackKey}:MotionOptions)
     updateAmbient();
    },{threshold:0}):null;
    if(heroObserver&&heroRegion)heroObserver.observe(heroRegion);
+
+   function extractCase(element:HTMLElement,extract:boolean){
+    if(!motion||document.hidden)return;
+    const frame=element.querySelector<HTMLElement>(".case-frame");
+    if(!frame)return;
+    let state=cases.get(frame);
+    if(!state){
+     const spring={duration:.48,ease:"back.out(1.25)",overwrite:"auto" as const};
+     state={y:gsap.quickTo(frame,"y",spring),z:gsap.quickTo(frame,"z",spring),scaleX:gsap.quickTo(frame,"scaleX",spring),scaleY:gsap.quickTo(frame,"scaleY",spring)};
+     cases.set(frame,state);
+    }
+    state.y(extract?-20:0);state.z(extract?24:0);
+    state.scaleX(extract?1.025:1);state.scaleY(extract?1.025:1);
+   }
+   function restCase(){if(activeCase)extractCase(activeCase,false);activeCase=null;}
+   const stackTilt=pointer&&heroStack?{
+    x:gsap.quickTo(heroStack,"rotationX",{duration:.6,ease:"power3.out",overwrite:"auto"}),
+    y:gsap.quickTo(heroStack,"rotationY",{duration:.6,ease:"power3.out",overwrite:"auto"}),
+   }:null;
 
    function disposeCard(element:HTMLElement,state:CardMotion){
     Object.values(state).forEach(quick=>quick.tween.revert());
@@ -137,6 +166,17 @@ export function useLibraryMotion({enabled,resultsKey,feedbackKey}:MotionOptions)
    }
    const move=safe((event:PointerEvent)=>{
     if(!pointer||document.hidden||event.pointerType==="touch")return;
+    const target=event.target instanceof Element?event.target:null;
+    const archiveCase=target?.closest<HTMLElement>("[data-archive-case]")||null;
+    if(archiveCase!==activeCase){restCase();if(archiveCase&&root.contains(archiveCase)){activeCase=archiveCase;extractCase(archiveCase,true);}}
+    if(stackTilt&&heroRegion&&target&&heroRegion.contains(target)){
+     stagePointerActive=true;
+     const stageBox=heroRegion.getBoundingClientRect();
+     if(stageBox.width&&stageBox.height){
+      stackTilt.x((.5-clamp((event.clientY-stageBox.top)/stageBox.height))*8);
+      stackTilt.y((clamp((event.clientX-stageBox.left)/stageBox.width)-.5)*12);
+     }
+    }else if(stackTilt&&stagePointerActive){stackTilt.x(0);stackTilt.y(0);stagePointerActive=false;}
     const element=event.target instanceof Element?event.target.closest<HTMLElement>(".resource-card"):null;
     if(element&&!root.contains(element))return;
     if(element!==active){if(active)rest(active);active=element;pressed=false;}
@@ -153,7 +193,7 @@ export function useLibraryMotion({enabled,resultsKey,feedbackKey}:MotionOptions)
     state.rotationX((.5-y)*depth);state.rotationY((x-.5)*depth);
     state.y(pressed?-2:-10);state.scaleX(scale);state.scaleY(scale);
    });
-   const leave=safe(()=>{if(active)rest(active);active=null;pressed=false;});
+   const leave=safe(()=>{if(active)rest(active);active=null;pressed=false;restCase();stackTilt?.x(0);stackTilt?.y(0);stagePointerActive=false;});
    const down=safe((event:PointerEvent)=>{
     move(event);
     if(!pointer||event.pointerType==="touch"||!active)return;
@@ -173,6 +213,14 @@ export function useLibraryMotion({enabled,resultsKey,feedbackKey}:MotionOptions)
     window.addEventListener("pointercancel",leave);
     window.addEventListener("blur",leave);
    }
+   const focusCase=safe((event:FocusEvent)=>{
+    const element=event.target instanceof Element?event.target.closest<HTMLElement>("[data-archive-case]"):null;
+    if(element&&root.contains(element)){restCase();activeCase=element;extractCase(element,true);}
+   });
+   const blurCase=safe((event:FocusEvent)=>{
+    if(activeCase&&event.target instanceof Element&&activeCase.contains(event.target))restCase();
+   });
+   if(motion){root.addEventListener("focusin",focusCase);root.addEventListener("focusout",blurCase);}
 
    const indicator=root.querySelector<HTMLElement>(".category-indicator");
    const tabs=indicator?.parentElement;
@@ -210,6 +258,10 @@ export function useLibraryMotion({enabled,resultsKey,feedbackKey}:MotionOptions)
     if(document.hidden){
      for(const animation of animations)if(!animation.paused()&&(animation.totalProgress()<1||animation.repeat()===-1)){animation.pause();paused.add(animation);}
      for(const [element,state] of cards)disposeCard(element,state);
+     for(const state of cases.values())Object.values(state).forEach(quick=>quick.tween.revert());
+     cases.clear();activeCase=null;
+     if(stackTilt&&heroStack){stackTilt.x.tween.pause();stackTilt.y.tween.pause();gsap.set(heroStack,{rotationX:0,rotationY:0});}
+     stagePointerActive=false;
      active=null;pressed=false;
     }else{
      for(const animation of paused)if(!ambient.has(animation)||heroVisible)animation.resume();
@@ -226,11 +278,15 @@ export function useLibraryMotion({enabled,resultsKey,feedbackKey}:MotionOptions)
     root.removeEventListener("pointermove",move);
     root.removeEventListener("pointerleave",leave);
     root.removeEventListener("pointerdown",down);
+    root.removeEventListener("focusin",focusCase);
+    root.removeEventListener("focusout",blurCase);
     window.removeEventListener("pointerup",up);
     window.removeEventListener("pointercancel",leave);
     window.removeEventListener("blur",leave);
     document.removeEventListener("visibilitychange",visibility);
     for(const [element,state] of cards)disposeCard(element,state);
+    for(const state of cases.values())Object.values(state).forEach(quick=>quick.tween.revert());
+    cases.clear();
     animations.forEach(animation=>animation.kill());
     paused.clear();ambient.clear();
    };
@@ -248,7 +304,7 @@ export function useLibraryMotion({enabled,resultsKey,feedbackKey}:MotionOptions)
   if(!enabled||document.hidden||!slots.length)return;
   const media=gsap.matchMedia();
   media.add("(prefers-reduced-motion: no-preference)",()=>{
-   const entrance=gsap.fromTo(slots,{opacity:0,y:15},{opacity:1,y:0,duration:.38,ease:"power3.out",stagger:{each:.045},clearProps:"opacity,transform",overwrite:"auto"});
+   const entrance=gsap.fromTo(slots,{opacity:0,x:24,rotationY:-4},{opacity:1,x:0,rotationY:0,duration:.42,ease:"power3.out",stagger:{each:.065},clearProps:"opacity,transform",overwrite:"auto"});
    return pauseWhenHidden([entrance]);
   },root);
   return()=>media.revert();

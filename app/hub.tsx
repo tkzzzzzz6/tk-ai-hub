@@ -1,6 +1,6 @@
 "use client";
 import {useCallback,useEffect,useMemo,useRef,useState} from "react";
-import {Search,Sparkles,BookOpen,Heart,ExternalLink,Copy,UserRound,ShieldCheck,Layers,WandSparkles,Puzzle,Bot,Check,FolderOpen,Orbit,Pause,Play,X} from "lucide-react";
+import {Search,Sparkles,BookOpen,Heart,ExternalLink,Copy,UserRound,ShieldCheck,Layers,WandSparkles,Puzzle,Bot,Check,FolderOpen,Orbit,Pause,Play,X,Archive} from "lucide-react";
 import {Tabs,TabsList,TabsTrigger} from "@/components/ui/tabs";
 import {Sheet,SheetContent,SheetHeader,SheetTitle,SheetDescription} from "@/components/ui/sheet";
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from "@/components/ui/dialog";
@@ -8,7 +8,7 @@ import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from "@/compo
 import {Toaster,toast} from "sonner";
 import {categories,type Resource,socialLinks} from "@/lib/catalog";
 import {topics,topicOf} from "@/lib/taxonomy";
-import {resourceTone,topicTone,promptColorLegend} from "@/lib/resource-tones";
+import {resourceTone,topicTone} from "@/lib/resource-tones";
 import {filterLibrary} from "@/lib/library-filters";
 import {skillInstallPrompt} from "@/lib/skill-install";
 import {useResourceTools} from "@/lib/webmcp";
@@ -113,11 +113,10 @@ export default function Hub({initialResources,storageUnavailable=false}:{initial
 
   return <div className="site-shell archive-shell" ref={motionRef}>
     <a className="skip-link" href="#resources">跳到资源库</a>
-    <div className="ambient-scene" aria-hidden="true"><span/><span/><span/></div><div className="reading-progress" aria-hidden="true"/>
+    <div className="ambient-scene" aria-hidden="true"/><div className="reading-progress" aria-hidden="true"/>
     <Toaster position="bottom-right" richColors/>
     <header className="topbar">
-      <div className="glass-reflection" aria-hidden="true"/>
-      <a className="brand" href="/"><span className="brand-icon"><Sparkles size={23} aria-hidden="true"/></span><span>TK 的 AI 工具箱<small>提示词 / Skills / MCP</small></span></a>
+      <a className="brand" href="/"><span className="brand-icon"><Archive size={23} aria-hidden="true"/></span><span>TK 的 AI 工具箱<small>提示词 / Skills / MCP</small></span></a>
       <nav aria-label="主导航"><button className={!onlyFavorites?"active":""} aria-pressed={!onlyFavorites} onClick={showLibrary}>资源库</button><button className={onlyFavorites?"active":""} aria-pressed={onlyFavorites} onClick={showFavorites} disabled={sessionLoading}><Heart size={16} aria-hidden="true"/>我的收藏</button></nav>
       <button className="contribute-button" onClick={()=>setSubmissionOpen(true)}>分享资料<Sparkles size={14} aria-hidden="true"/></button>
       <button className="motion-toggle" aria-label={motionEnabled?"关闭动态效果":"开启动态效果"} aria-pressed={motionEnabled} title={motionEnabled?"关闭动态效果":"开启动态效果"} onClick={toggleMotion}>{motionEnabled?<Pause size={17} aria-hidden="true"/>:<Play size={17} aria-hidden="true"/>}<span>动效</span></button>
@@ -138,7 +137,6 @@ export default function Hub({initialResources,storageUnavailable=false}:{initial
             <label className="quality-filter"><select aria-label="资源排序" value={sort} onChange={event=>setSort(event.target.value)}><option>默认排序</option><option>最近更新</option></select></label>
           </div>
           <div className="topic-shortcuts" aria-label="用途分类快捷筛选"><button className={topic==="全部用途"?"active":""} aria-pressed={topic==="全部用途"} onClick={()=>{setTopic("全部用途");setTag("全部标签");}}>全部用途<span>{typeResources.length}</span></button>{availableTopics.map(item=><button key={item} data-tone={topicTone(item)} className={topic===item?"active":""} aria-pressed={topic===item} onClick={()=>{setTopic(item);setTag("全部标签");}}>{item}<span>{typeResources.filter(resource=>topicOf(resource)===item).length}</span></button>)}</div>
-          {(category==="全部"||category==="提示词")&&<div className="prompt-color-legend" aria-label="提示词用途配色"><small>提示词配色</small>{promptColorLegend.map(item=><span key={item.tone} data-tone={item.tone}>{item.label}</span>)}</div>}
           {tags.length>0&&<details className="tag-filter"><summary>细分标签{tag!=="全部标签"&&" · "+tag}</summary><div className="tags"><button className={tag==="全部标签"?"chosen":""} aria-pressed={tag==="全部标签"} onClick={()=>setTag("全部标签")}>全部标签</button>{tags.map(item=><button key={item} className={tag===item?"chosen":""} aria-pressed={tag===item} onClick={()=>setTag(item)}>{item}</button>)}</div></details>}
           {activeFilters&&<div className="active-filter-row" aria-label="已应用的筛选">
             {category!=="全部"&&<button onClick={()=>chooseType("全部")} aria-label={"移除类型筛选 "+category}>{category}<X size={12} aria-hidden="true"/></button>}
@@ -148,7 +146,7 @@ export default function Hub({initialResources,storageUnavailable=false}:{initial
             <button className="clear-all" onClick={resetFilters}>清除筛选</button>
           </div>}
         </div>
-        <div className="list-heading"><h2>{topic!=="全部用途"?topic:category==="全部"?onlyFavorites?"已收藏的资料":"全部资料":category}</h2><div className="list-count"><span role="status" aria-live="polite" aria-atomic="true">找到 {filtered.length} 条资源</span><button className="mobile-contribute" onClick={()=>setSubmissionOpen(true)}>分享资料<Sparkles size={14} aria-hidden="true"/></button></div></div>
+        <div className="list-heading"><div><h2>{topic!=="全部用途"?topic:category==="全部"?onlyFavorites?"已收藏的资料":"全部资料":category}</h2><small className="card-interaction-hint">点击卡片翻面，再点翻回；右下角展开详情</small></div><div className="list-count"><span role="status" aria-live="polite" aria-atomic="true">找到 {filtered.length} 条资源</span><button className="mobile-contribute" onClick={()=>setSubmissionOpen(true)}>分享资料<Sparkles size={14} aria-hidden="true"/></button></div></div>
         <div className="resource-grid">{visible.map(resource=><ResourceCard key={resource.id} resource={resource} isFavorite={favorites.includes(resource.id)} pending={pendingFavorites.includes(resource.id)} favoriteUnavailable={sessionLoading||storageUnavailable} selectedTag={tag} copied={copied} onFavorite={resource=>void toggleFavorite(resource)} onTag={setTag} onCopy={(resource,language,install)=>void copy(resource,language,install)} onOpen={openResource}/>)}</div>
         {filtered.length>0&&pageCount>1&&<nav className="pagination" aria-label="资源分页"><button disabled={currentPage===1} onClick={()=>setPage(currentPage-1)}>上一页</button><span>{currentPage} / {pageCount}</span><button disabled={currentPage===pageCount} onClick={()=>setPage(currentPage+1)}>下一页</button></nav>}
         {!filtered.length&&<div className="empty"><Search size={30} aria-hidden="true"/><h3>{!resources.length?"这里还没有收录资料":onlyFavorites&&!favorites.length?"收藏你的第一条资源":"没有找到匹配的资源"}</h3><p>{!resources.length?"分享一份你真正想收藏的资料，整理与审核后就会出现在这里。":onlyFavorites&&!favorites.length?"在资源卡片上点击爱心，把喜欢的内容留在手边。":"试试其他用途、标签或关键词。"}</p>{!resources.length?<button className="secondary-button" onClick={()=>setSubmissionOpen(true)}>分享第一份资料</button>:onlyFavorites&&!favorites.length?<button className="secondary-button" onClick={showLibrary}>浏览资源库</button>:<button className="secondary-button" onClick={resetFilters}>清除筛选</button>}</div>}

@@ -1,9 +1,6 @@
 "use client";
-import DemoPreview from "./demo-preview";
-import SkillInstallPanel from "./skill-install-panel";
-import {skillInstallPrompt} from "@/lib/skill-install";
-import {useCallback,useEffect,useMemo,useState} from "react";
-import {Search,Sparkles,BookOpen,Heart,ExternalLink,Copy,UserRound,ShieldCheck,Layers,WandSparkles,Puzzle,Bot,Check,FolderOpen} from "lucide-react";
+import {useCallback,useEffect,useMemo,useRef,useState} from "react";
+import {Search,Sparkles,BookOpen,Heart,ExternalLink,Copy,UserRound,ShieldCheck,Layers,WandSparkles,Puzzle,Bot,Check,FolderOpen,Orbit,Pause,Play,X,LoaderCircle} from "lucide-react";
 import {Tabs,TabsList,TabsTrigger} from "@/components/ui/tabs";
 import {Sheet,SheetContent,SheetHeader,SheetTitle,SheetDescription} from "@/components/ui/sheet";
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from "@/components/ui/dialog";
@@ -11,36 +8,182 @@ import {Select,SelectTrigger,SelectValue,SelectContent,SelectItem} from "@/compo
 import {Toaster,toast} from "sonner";
 import {categories,type Resource,socialLinks} from "@/lib/catalog";
 import {topics,topicOf} from "@/lib/taxonomy";
-import SubmissionDialog from "./submission-dialog";
-import {useLibraryMotion} from "./library-motion";
+import {filterLibrary} from "@/lib/library-filters";
+import {skillInstallPrompt} from "@/lib/skill-install";
 import {useResourceTools} from "@/lib/webmcp";
-const icons:Record<string,typeof Bot>={"提示词":WandSparkles,"Skills":Puzzle,"MCP":Layers};
+import DemoPreview from "./demo-preview";
+import SkillInstallPanel from "./skill-install-panel";
+import SubmissionDialog from "./submission-dialog";
+import ArchiveHero from "./archive-hero";
+import {useLibraryMotion} from "./library-motion";
+
+const icons:Record<string,typeof Bot>={"提示词":WandSparkles,Skills:Puzzle,MCP:Layers};
+const motionPreferenceKey="tk-ai-hub:motion";
+
 export default function Hub({initialResources,storageUnavailable=false}:{initialResources:Resource[];storageUnavailable?:boolean}){
-const [submissionOpen,setSubmissionOpen]=useState(false);const motionRef=useLibraryMotion();
-const [resources]=useState(initialResources),[category,setCategory]=useState("全部"),[topic,setTopic]=useState("全部用途"),[query,setQuery]=useState(""),[tag,setTag]=useState("全部标签"),[selected,setSelected]=useState<Resource|null>(null),[login,setLogin]=useState(false),[copied,setCopied]=useState(""),[sort,setSort]=useState("默认排序");
-const [user,setUser]=useState<{userId:string;displayName:string;role:string}|null>(null),[favorites,setFavorites]=useState<string[]>([]),[onlyFavorites,setOnlyFavorites]=useState(false);
-useEffect(()=>{fetch("/api/session").then(async r=>{if(!r.ok)throw new Error();return r.json() as Promise<{user:{userId:string;displayName:string;role:string}|null;favorites:string[]}>;}).then(d=>{setUser(d.user);setFavorites(d.favorites);}).catch(()=>{if(!storageUnavailable)toast.error("账户与收藏暂时不可用");});},[storageUnavailable]);
-async function toggleFavorite(r:Resource){if(!user){setLogin(true);return;}try{const saved=!favorites.includes(r.id);const response=await fetch("/api/favorites",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({resourceId:r.id,saved})});const d=await response.json() as {error?:string};if(!response.ok)throw new Error(d.error);setFavorites(previous=>saved?[...new Set([...previous,r.id])]:previous.filter(id=>id!==r.id));toast.success(saved?"已加入收藏":"已取消收藏");}catch(e){toast.error(e instanceof Error?e.message:"收藏失败");}}
-const filtered=useMemo(()=>resources.filter(r=>(!onlyFavorites||favorites.includes(r.id))&&(category==="全部"||r.category===category)&&(topic==="全部用途"||topicOf(r)===topic)&&(tag==="全部标签"||r.tags.includes(tag))&&[r.title,r.description,r.tags.join(" "),r.content,r.titleEn||"",r.descriptionEn||"",r.contentEn||"",topicOf(r)].join(" ").toLowerCase().includes(query.trim().toLowerCase())).sort((a,b)=>sort==="最近更新"?(b.updatedAt||"").localeCompare(a.updatedAt||""):0),[resources,category,topic,query,tag,onlyFavorites,favorites,sort]);
-const openResource=useCallback((r:Resource)=>setSelected(r),[]);useResourceTools(resources,openResource);
-const [page,setPage]=useState(1);useEffect(()=>setPage(1),[category,topic,query,tag,onlyFavorites,sort]);const pageCount=Math.max(1,Math.ceil(filtered.length/6)),currentPage=Math.min(page,pageCount),visible=filtered.slice((currentPage-1)*6,currentPage*6);
-const typeResources=resources.filter(r=>(category==="全部"||r.category===category)&&(!onlyFavorites||favorites.includes(r.id)));
-const tagResources=typeResources.filter(r=>topic==="全部用途"||topicOf(r)===topic),tags=[...new Set(tagResources.flatMap(r=>r.tags))];
-const activeFilters=topic!=="全部用途"||tag!=="全部标签"||!!query;
-function resetFilters(){setQuery("");setTag("全部标签");setCategory("全部");setTopic("全部用途");}
-async function copy(r:Resource,language:"zh"|"en"="zh"){try{await navigator.clipboard.writeText(language==="en"?r.contentEn||"":r.content);setCopied(r.id+language);toast.success(language==="en"?"已复制英文版":"已复制中文版");}catch{toast.error("复制失败，请在详情中选中正文复制");}}
-async function copyInstall(r:Resource,language:"zh"|"en"="zh"){try{const prompt=skillInstallPrompt(r,language);if(!prompt)throw new Error("请先补充有效的 HTTPS 来源链接");await navigator.clipboard.writeText(prompt);setCopied(r.id+"install"+language);toast.success(language==="zh"?"已复制中文安装指令，粘贴给 Agent 即可":"English installation instruction copied");}catch(e){toast.error(e instanceof Error?e.message:"复制失败，请打开详情手动复制");}}
-return <div className="site-shell" ref={motionRef}><div className="ambient-scene" aria-hidden="true"><span/><span/><span/></div><div className="reading-progress" aria-hidden="true"/><Toaster position="bottom-right" richColors/><header className="topbar"><div className="glass-reflection" aria-hidden="true"/><a className="brand" href="/"><span className="brand-icon"><Sparkles size={23}/></span><span>TK 的 AI 工具箱<small>PROMPTS · SKILLS · MCP</small></span></a><nav aria-label="主导航"><button className={!onlyFavorites?"active":""} onClick={()=>setOnlyFavorites(false)}>资源库</button><button className={onlyFavorites?"active":""} onClick={()=>user?setOnlyFavorites(true):setLogin(true)}><Heart size={16}/>我的收藏</button></nav><button className="contribute-button" onClick={()=>setSubmissionOpen(true)}>分享资料<Sparkles size={14}/></button><button className="login-button" onClick={()=>setLogin(true)}><UserRound size={17}/><span>{user?user.displayName:"登录"}</span></button></header>
-<main className="workspace"><section className="library">{storageUnavailable&&<div className="message-banner" role="alert">资源暂时无法读取，请稍后刷新；收藏与编辑暂时不能保存。</div>}<div className="page-heading"><div><p className="eyebrow"><span className="hero-dot"/>A SMALL LIBRARY OF GOOD IDEAS</p><h1>{onlyFavorites?<>让喜欢的，<br/><span>随手可得。</span></>:<>把好灵感，<br/><span>留在手边。</span></>}</h1><p className="heading-note">按用途收藏提示词、Skills 与 MCP。<br/>中英对照，随时找到需要的内容。</p></div><span className="collection-number"><Sparkles size={17}/>{resources.length} 条资源</span></div>
-<div className="library-controls"><div className="search-row"><label className="search-field"><Search size={21}/><input aria-label="搜索资源" value={query} onChange={e=>setQuery(e.target.value)} placeholder="搜索名称、用途或中英文内容…"/>{query&&<button aria-label="清空搜索" onClick={()=>setQuery("")}>×</button>}</label><Select value={topic} onValueChange={v=>{setTopic(v);setTag("全部标签");}}><SelectTrigger className="scene-select" aria-label="按用途分类"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="全部用途">全部用途</SelectItem>{topics.map(t=><SelectItem key={t} value={t}>{t} · {typeResources.filter(r=>topicOf(r)===t).length}</SelectItem>)}</SelectContent></Select></div>
-<div className="filter-row"><Tabs value={category} onValueChange={v=>{setCategory(v);setTag("全部标签");}}><TabsList className="category-tabs"><span className="category-indicator" aria-hidden="true"/>{categories.map(c=><TabsTrigger key={c} value={c}>{c}<span>{c==="全部"?resources.length:resources.filter(r=>r.category===c).length}</span></TabsTrigger>)}</TabsList></Tabs><label className="quality-filter"><select aria-label="资源排序" value={sort} onChange={e=>setSort(e.target.value)}><option>默认排序</option><option>最近更新</option></select></label></div>
-<div className="topic-shortcuts" aria-label="用途分类快捷筛选"><button className={topic==="全部用途"?"active":""} onClick={()=>{setTopic("全部用途");setTag("全部标签");}}>全部用途<span>{typeResources.length}</span></button>{topics.filter(t=>typeResources.some(r=>topicOf(r)===t)).map(t=><button key={t} className={topic===t?"active":""} onClick={()=>{setTopic(t);setTag("全部标签");}}>{t}<span>{typeResources.filter(r=>topicOf(r)===t).length}</span></button>)}</div>
-{tags.length>0&&<details className="tag-filter"><summary>细分标签{tag!=="全部标签"&&" · "+tag}</summary><div className="tags"><button className={tag==="全部标签"?"chosen":""} onClick={()=>setTag("全部标签")}>全部标签</button>{tags.map(t=><button key={t} className={tag===t?"chosen":""} onClick={()=>setTag(t)}>{t}</button>)}</div></details>}
-{activeFilters&&<div className="active-filter-row">{topic!=="全部用途"&&<button onClick={()=>{setTopic("全部用途");setTag("全部标签");}}>{topic}<span>×</span></button>}{tag!=="全部标签"&&<button onClick={()=>setTag("全部标签")}>{tag}<span>×</span></button>}{query&&<button onClick={()=>setQuery("")}>搜索：{query}<span>×</span></button>}<button className="clear-all" onClick={resetFilters}>清除筛选</button></div>}</div>
-<div className="list-heading"><h2>{onlyFavorites?"我的收藏":topic!=="全部用途"?topic:category==="全部"?"资源精选":category}</h2><div className="list-count"><span>{filtered.length} 个结果</span><button className="mobile-contribute" onClick={()=>setSubmissionOpen(true)}>分享资料<Sparkles size={14}/></button></div></div><div className="resource-grid">{visible.map(r=>{const Icon=icons[r.category]??Bot;return <article className="resource-card" key={r.id}><DemoPreview demoUrl={r.demoUrl} demoType={r.demoType} title={r.title} compact onOpen={()=>setSelected(r)}/><div className="card-top"><span className={"resource-icon type-"+r.category}><Icon size={23}/></span><span className="type-label">{r.category}<small>{topicOf(r)}</small></span><button className={favorites.includes(r.id)?"favorite is-favorite":"favorite"} aria-pressed={favorites.includes(r.id)} aria-label={"收藏 "+r.title} onClick={()=>toggleFavorite(r)}><Heart size={19}/></button></div><button className="card-title" onClick={()=>setSelected(r)}>{r.title}</button><p>{r.description}</p><div className="tags">{r.tags.slice(0,3).map(t=><button key={t} onClick={()=>setTag(t)}>{t}</button>)}</div><div className="card-bottom">{r.category==="Skills"&&skillInstallPrompt(r)?<div className="copy-options skill-card-install"><button onClick={()=>copyInstall(r,"zh")} aria-label={"复制 "+r.title+" 中文安装指令"}>{copied===r.id+"installzh"?<Check size={15}/>:<Copy size={15}/>}安装指令</button><button onClick={()=>copyInstall(r,"en")} aria-label={"复制 "+r.title+" 英文安装指令"}>{copied===r.id+"installen"?<Check size={15}/>:<Copy size={15}/>}EN</button></div>:["提示词","Skills"].includes(r.category)?<div className="copy-options"><button onClick={()=>copy(r,"zh")} aria-label={"复制 "+r.title+" 中文版"}>{copied===r.id+"zh"?<Check size={15}/>:<Copy size={15}/>}中文</button><button onClick={()=>copy(r,"en")} disabled={!r.contentEn} aria-label={"复制 "+r.title+" 英文版"}>{copied===r.id+"en"?<Check size={15}/>:<Copy size={15}/>}English</button></div>:<a href={r.url} target="_blank" rel="noopener noreferrer">查看来源<ExternalLink size={14}/></a>}<button className="card-action" onClick={()=>setSelected(r)}>查看内容<BookOpen size={15}/></button></div></article>;})}</div>
-{filtered.length>0&&<nav className="pagination" aria-label="资源分页"><button disabled={currentPage===1} onClick={()=>setPage(currentPage-1)}>上一页</button><span>{currentPage} / {pageCount}</span><button disabled={currentPage===pageCount} onClick={()=>setPage(currentPage+1)}>下一页</button></nav>}{!filtered.length&&<div className="empty"><Search size={30}/><h3>{!resources.length?"这里还没有收录资料":onlyFavorites&&!favorites.length?"收藏你的第一条资源":"没有找到匹配的资源"}</h3><p>{!resources.length?"从一份你真正想收藏的资料开始，整理与审核后就会出现在这里。":"试试其他用途、标签或关键词。"}</p>{!resources.length?<button className="secondary-button" onClick={()=>setSubmissionOpen(true)}>分享第一份资料</button>:<button className="secondary-button" onClick={resetFilters}>清除筛选</button>}</div>}</section>
-<aside className="right-rail"><div className="rem-card"><img src="/rem.png" width="1024" height="1536" alt="蓝白配色的雷姆角色插画"/><div className="rem-caption"><span>A LITTLE INSPIRATION, EVERY DAY</span><strong>收藏灵感，<br/>也收藏一点可能。</strong></div></div><section className="rail-tip"><span className="rail-label"><FolderOpen size={17}/>好找，也好收藏</span><p>先选资源类型，再按用途和标签筛选。中文与英文保存在同一条资源中。</p><small>资料由大家提交，整理后交由管理员审核。</small></section><div className="rail-note"><BookOpen size={20}/><div><strong>继续阅读与记录</strong><a href="https://tanke.asia/" target="_blank" rel="noopener noreferrer">访问 TK 的小站<ExternalLink size={14}/></a></div></div>{user&&["owner","admin"].includes(user.role)&&<a className="admin-link" href="/admin"><ShieldCheck size={17}/>内容管理</a>}<section className="rail-intake"><span className="rail-label"><Sparkles size={16}/>一起整理好灵感</span><p>分享原文，由 GPT 或管理员整理中英版本、分类与标签。</p><button className="secondary-button" onClick={()=>setSubmissionOpen(true)}>提交一份资料</button></section></aside></main>
-<footer><span>TK 的 AI 工具箱 <span className="footer-flower">✦</span>分类 · 收藏 · 中英对照</span><div>{socialLinks.map(([name,url])=><a key={name} href={url} target="_blank" rel="noopener noreferrer">{name}</a>)}</div></footer>
-<Sheet open={!!selected} onOpenChange={v=>{if(!v)setSelected(null);}}><SheetContent className="resource-sheet">{selected&&<><SheetHeader><span className="type-label">{selected.category} · {topicOf(selected)}</span><SheetTitle className="detail-title">{selected.title}</SheetTitle><SheetDescription>{selected.description}</SheetDescription></SheetHeader><div className="detail-body"><div className="tags">{selected.tags.map(t=><span key={t}>{t}</span>)}</div>{selected.category==="Skills"&&<SkillInstallPanel key={selected.id} resource={selected}/>}<DemoPreview demoUrl={selected.demoUrl} demoType={selected.demoType} title={selected.title}/><div className="bilingual-columns"><section lang="zh-CN"><div className="language-heading"><h3>中文版</h3><span>中文</span></div><p className="language-title">{selected.title}</p><pre tabIndex={0}>{selected.content}</pre><button className="primary-button" onClick={()=>copy(selected,"zh")}><Copy size={16}/>复制中文版</button></section><section lang="en"><div className="language-heading"><h3>English</h3><span>EN</span></div><p className="language-title">{selected.titleEn}</p><pre tabIndex={0}>{selected.contentEn||"English translation is pending."}</pre><button className="primary-button" disabled={!selected.contentEn} onClick={()=>copy(selected,"en")}><Copy size={16}/>Copy English</button></section></div>{selected.url&&<a className="secondary-button" href={selected.url} target="_blank" rel="noopener noreferrer">打开来源<ExternalLink size={16}/></a>}<p className="source-note">来源：{selected.source}{selected.updatedAt&&" · 更新于 "+new Date(selected.updatedAt).toLocaleDateString("zh-CN",{timeZone:"Asia/Shanghai"})}</p></div></>}</SheetContent></Sheet>
-<SubmissionDialog open={submissionOpen} onOpenChange={setSubmissionOpen}/><Dialog open={login} onOpenChange={setLogin}><DialogContent><DialogHeader><DialogTitle>登录与收藏</DialogTitle><DialogDescription>当前测试版使用 Sites 账户。GitHub／邮箱登录将在身份服务配置完成后开放。</DialogDescription></DialogHeader>{user?<><p>当前账户：{user.displayName}</p><button className="primary-button" onClick={()=>{setOnlyFavorites(true);setLogin(false);}}>查看我的收藏</button>{["owner","admin"].includes(user.role)&&<a className="secondary-button" href="/admin">内容管理</a>}<a className="text-button" href="/signout-with-chatgpt?return_to=/" target="_top">退出测试账户</a></>:<a className="primary-button" href="/signin-with-chatgpt?return_to=/" target="_top">使用测试账户继续</a>}</DialogContent></Dialog></div>;
+  const resources=initialResources;
+  const [category,setCategory]=useState("全部"),[topic,setTopic]=useState("全部用途"),[query,setQuery]=useState(""),[tag,setTag]=useState("全部标签"),[sort,setSort]=useState("默认排序");
+  const [selected,setSelected]=useState<Resource|null>(null),[login,setLogin]=useState(false),[submissionOpen,setSubmissionOpen]=useState(false);
+  const [user,setUser]=useState<{userId:string;displayName:string;role:string}|null>(null),[sessionLoading,setSessionLoading]=useState(true);
+  const [favorites,setFavorites]=useState<string[]>([]),[onlyFavorites,setOnlyFavorites]=useState(false),[pendingFavorites,setPendingFavorites]=useState<string[]>([]);
+  const favoriteRequests=useRef(new Set<string>()),searchRef=useRef<HTMLInputElement>(null),detailTriggerRef=useRef<HTMLElement|null>(null);
+  const [copied,setCopied]=useState(""),[feedbackVersion,setFeedbackVersion]=useState(0),[motionEnabled,setMotionEnabled]=useState(true),[page,setPage]=useState(1);
+
+  useEffect(()=>{
+    const controller=new AbortController();
+    fetch("/api/session",{signal:controller.signal}).then(async response=>{
+      if(!response.ok)throw new Error();
+      return response.json() as Promise<{user:typeof user;favorites:string[]}>;
+    }).then(data=>{setUser(data.user);setFavorites(data.favorites);}).catch(()=>{
+      if(!controller.signal.aborted&&!storageUnavailable)toast.error("账户与收藏暂时不可用");
+    }).finally(()=>{if(!controller.signal.aborted)setSessionLoading(false);});
+    return()=>controller.abort();
+  },[storageUnavailable]);
+  useEffect(()=>{try{setMotionEnabled(localStorage.getItem(motionPreferenceKey)!=="off");}catch{/* Preferences are optional. */}},[]);
+  function toggleMotion(){
+    const next=!motionEnabled;setMotionEnabled(next);
+    try{localStorage.setItem(motionPreferenceKey,next?"on":"off");}catch{/* Session preference still applies. */}
+  }
+  useEffect(()=>{
+    if(!copied)return;const timer=window.setTimeout(()=>setCopied(""),2000);
+    return()=>window.clearTimeout(timer);
+  },[copied,feedbackVersion]);
+  useEffect(()=>{
+    function shortcut(event:KeyboardEvent){
+      if(selected||login||submissionOpen||event.defaultPrevented)return;
+      const target=event.target as HTMLElement|null,editing=target?.closest("input,textarea,select,[contenteditable=true]");
+      if(((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k")||(event.key==="/"&&!editing&&!event.ctrlKey&&!event.metaKey&&!event.altKey)){
+        event.preventDefault();searchRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown",shortcut);return()=>document.removeEventListener("keydown",shortcut);
+  },[selected,login,submissionOpen]);
+
+  async function toggleFavorite(resource:Resource){
+    if(!user){setLogin(true);return;}
+    if(favoriteRequests.current.has(resource.id))return;
+    favoriteRequests.current.add(resource.id);setPendingFavorites(previous=>[...previous,resource.id]);
+    try{
+      const saved=!favorites.includes(resource.id);
+      const response=await fetch("/api/favorites",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({resourceId:resource.id,saved})});
+      const data=await response.json() as {error?:string};
+      if(!response.ok)throw new Error(data.error||"收藏保存失败，请重试");
+      setFavorites(previous=>saved?[...new Set([...previous,resource.id])]:previous.filter(id=>id!==resource.id));
+      setCopied(resource.id+"favorite");setFeedbackVersion(previous=>previous+1);
+      toast.success(saved?"已加入收藏":"已取消收藏");
+    }catch(error){toast.error(error instanceof Error?error.message:"收藏失败");}
+    finally{favoriteRequests.current.delete(resource.id);setPendingFavorites(previous=>previous.filter(id=>id!==resource.id));}
+  }
+  const filtered=useMemo(()=>filterLibrary(resources,{category,topic,tag,query,onlyFavorites,favorites,sort}),[resources,category,topic,query,tag,onlyFavorites,favorites,sort]);
+  useEffect(()=>setPage(1),[category,topic,query,tag,onlyFavorites,sort]);
+  const pageCount=Math.max(1,Math.ceil(filtered.length/6)),currentPage=Math.min(page,pageCount),visible=filtered.slice((currentPage-1)*6,currentPage*6);
+  // Typing should not replay every card's entrance.
+  const motionRef=useLibraryMotion({enabled:motionEnabled,resultsKey:[category,topic,tag,onlyFavorites,sort,currentPage].join("|"),feedbackKey:copied+":"+feedbackVersion});
+  const openResource=useCallback((resource:Resource)=>{
+    detailTriggerRef.current=document.activeElement instanceof HTMLElement?document.activeElement:null;setSelected(resource);
+  },[]);
+  useResourceTools(resources,openResource);
+  const typeResources=resources.filter(resource=>(category==="全部"||resource.category===category)&&(!onlyFavorites||favorites.includes(resource.id)));
+  const availableTopics=topics.filter(item=>typeResources.some(resource=>topicOf(resource)===item));
+  const tags=[...new Set(typeResources.filter(resource=>topic==="全部用途"||topicOf(resource)===topic).flatMap(resource=>resource.tags))];
+  const activeFilters=category!=="全部"||topic!=="全部用途"||tag!=="全部标签"||!!query.trim();
+  function resetFilters(){setQuery("");setTag("全部标签");setCategory("全部");setTopic("全部用途");setPage(1);}
+  function chooseType(value:string){setCategory(value);setTopic("全部用途");setTag("全部标签");setPage(1);}
+  function showLibrary(){setOnlyFavorites(false);resetFilters();}
+  function showFavorites(){if(!user){setLogin(true);return;}resetFilters();setOnlyFavorites(true);}
+  function browseLibrary(){
+    const library=document.getElementById("resources");
+    library?.focus({preventScroll:true});
+    library?.scrollIntoView({behavior:motionEnabled&&!matchMedia("(prefers-reduced-motion:reduce)").matches?"smooth":"instant",block:"start"});
+  }
+  function chooseFromHero(value:string){
+    setOnlyFavorites(false);setQuery("");chooseType(value);
+    browseLibrary();
+  }
+  async function copy(resource:Resource,language:"zh"|"en"="zh",install=false){
+    const text=install?skillInstallPrompt(resource,language):language==="en"?resource.contentEn:resource.content;
+    if(!text){toast.error(install?"请先补充有效的 HTTPS 来源链接":"这个语言版本还未补齐");return;}
+    try{
+      await navigator.clipboard.writeText(text);setCopied(resource.id+(install?"install":"")+language);setFeedbackVersion(previous=>previous+1);
+      toast.success(install?language==="zh"?"已复制中文安装指令，粘贴给 Agent 即可":"English installation instruction copied":language==="en"?"已复制英文版":"已复制中文版");
+    }catch{toast.error("复制失败，请在详情中选中正文复制");}
+  }
+
+  return <div className="site-shell archive-shell" ref={motionRef}>
+    <a className="skip-link" href="#resources">跳到资源库</a>
+    <div className="ambient-scene" aria-hidden="true"><span/><span/><span/></div><div className="reading-progress" aria-hidden="true"/>
+    <Toaster position="bottom-right" richColors/>
+    <header className="topbar">
+      <div className="glass-reflection" aria-hidden="true"/>
+      <a className="brand" href="/"><span className="brand-icon"><Sparkles size={23} aria-hidden="true"/></span><span>TK 的 AI 工具箱<small>提示词 / Skills / MCP</small></span></a>
+      <nav aria-label="主导航"><button className={!onlyFavorites?"active":""} aria-pressed={!onlyFavorites} onClick={showLibrary}>资源库</button><button className={onlyFavorites?"active":""} aria-pressed={onlyFavorites} onClick={showFavorites} disabled={sessionLoading}><Heart size={16} aria-hidden="true"/>我的收藏</button></nav>
+      <button className="contribute-button" onClick={()=>setSubmissionOpen(true)}>分享资料<Sparkles size={14} aria-hidden="true"/></button>
+      <button className="motion-toggle" aria-label={motionEnabled?"关闭动态效果":"开启动态效果"} aria-pressed={motionEnabled} title={motionEnabled?"关闭动态效果":"开启动态效果"} onClick={toggleMotion}>{motionEnabled?<Pause size={17} aria-hidden="true"/>:<Play size={17} aria-hidden="true"/>}<span>动效</span></button>
+      <button className="login-button" onClick={()=>setLogin(true)}><UserRound size={17} aria-hidden="true"/><span>{user?user.displayName:"登录"}</span></button>
+    </header>
+    <main className="workspace">
+      <ArchiveHero resources={resources} onChooseType={chooseFromHero} onShare={()=>setSubmissionOpen(true)} onBrowse={browseLibrary}/>
+      <section className="library" id="resources" aria-labelledby="library-heading" tabIndex={-1}>
+        {storageUnavailable&&<div className="message-banner" role="alert">资源暂时无法读取，请稍后刷新；收藏与编辑暂时不能保存。</div>}
+        <div className="archive-library-heading"><div><h2 id="library-heading">{onlyFavorites?"我的收藏":"探索资源库"}</h2><p>{onlyFavorites?"喜欢的资料，下次也能轻松找到。":"按类型、用途与标签，找到需要的那一份。"}</p></div><span><FolderOpen size={16} aria-hidden="true"/>{onlyFavorites?favorites.length:resources.length} 条</span></div>
+        <div className="library-controls">
+          <div className="search-row">
+            <label className="search-field"><Search size={20} aria-hidden="true"/><input ref={searchRef} aria-label="搜索资源" value={query} onChange={event=>setQuery(event.target.value)} placeholder="搜索名称、用途或中英文内容…"/>{query?<button aria-label="清空搜索" onClick={()=>{setQuery("");searchRef.current?.focus();}}><X size={17} aria-hidden="true"/></button>:<kbd aria-hidden="true">Ctrl K</kbd>}</label>
+            <Select value={topic} onValueChange={value=>{setTopic(value);setTag("全部标签");}}><SelectTrigger className="scene-select" aria-label="按用途分类"><SelectValue/></SelectTrigger><SelectContent><SelectItem value="全部用途">全部用途</SelectItem>{availableTopics.map(item=><SelectItem key={item} value={item}>{item} · {typeResources.filter(resource=>topicOf(resource)===item).length}</SelectItem>)}</SelectContent></Select>
+          </div>
+          <div className="filter-row">
+            <Tabs value={category} onValueChange={chooseType}><TabsList className="category-tabs" aria-label="资源类型"><span className="category-indicator" aria-hidden="true"/>{categories.map(item=>{const Icon=icons[item]||FolderOpen;return <TabsTrigger key={item} value={item}><Icon size={15} aria-hidden="true"/>{item}<span>{resources.filter(resource=>(item==="全部"||resource.category===item)&&(!onlyFavorites||favorites.includes(resource.id))).length}</span></TabsTrigger>;})}</TabsList></Tabs>
+            <label className="quality-filter"><select aria-label="资源排序" value={sort} onChange={event=>setSort(event.target.value)}><option>默认排序</option><option>最近更新</option></select></label>
+          </div>
+          <div className="topic-shortcuts" aria-label="用途分类快捷筛选"><button className={topic==="全部用途"?"active":""} aria-pressed={topic==="全部用途"} onClick={()=>{setTopic("全部用途");setTag("全部标签");}}>全部用途<span>{typeResources.length}</span></button>{availableTopics.map(item=><button key={item} className={topic===item?"active":""} aria-pressed={topic===item} onClick={()=>{setTopic(item);setTag("全部标签");}}>{item}<span>{typeResources.filter(resource=>topicOf(resource)===item).length}</span></button>)}</div>
+          {tags.length>0&&<details className="tag-filter"><summary>细分标签{tag!=="全部标签"&&" · "+tag}</summary><div className="tags"><button className={tag==="全部标签"?"chosen":""} aria-pressed={tag==="全部标签"} onClick={()=>setTag("全部标签")}>全部标签</button>{tags.map(item=><button key={item} className={tag===item?"chosen":""} aria-pressed={tag===item} onClick={()=>setTag(item)}>{item}</button>)}</div></details>}
+          {activeFilters&&<div className="active-filter-row" aria-label="已应用的筛选">
+            {category!=="全部"&&<button onClick={()=>chooseType("全部")} aria-label={"移除类型筛选 "+category}>{category}<X size={12} aria-hidden="true"/></button>}
+            {topic!=="全部用途"&&<button onClick={()=>{setTopic("全部用途");setTag("全部标签");}} aria-label={"移除用途筛选 "+topic}>{topic}<X size={12} aria-hidden="true"/></button>}
+            {tag!=="全部标签"&&<button onClick={()=>setTag("全部标签")} aria-label={"移除标签筛选 "+tag}>{tag}<X size={12} aria-hidden="true"/></button>}
+            {query.trim()&&<button onClick={()=>setQuery("")} aria-label="移除搜索筛选">搜索：{query}<X size={12} aria-hidden="true"/></button>}
+            <button className="clear-all" onClick={resetFilters}>清除筛选</button>
+          </div>}
+        </div>
+        <div className="list-heading"><h2>{topic!=="全部用途"?topic:category==="全部"?onlyFavorites?"已收藏的资料":"全部资料":category}</h2><div className="list-count"><span role="status" aria-live="polite" aria-atomic="true">找到 {filtered.length} 条资源</span><button className="mobile-contribute" onClick={()=>setSubmissionOpen(true)}>分享资料<Sparkles size={14} aria-hidden="true"/></button></div></div>
+        <div className="resource-grid">{visible.map(resource=>{
+          const Icon=icons[resource.category]||Bot,install=resource.category==="Skills"&&!!skillInstallPrompt(resource),isFavorite=favorites.includes(resource.id),pending=pendingFavorites.includes(resource.id);
+          return <div className="resource-slot" key={resource.id}><article className="resource-card" data-resource-id={resource.id}>
+            <span className="card-serial" aria-hidden="true"/><span className="feedback-flash" aria-hidden="true"/>
+            <DemoPreview demoUrl={resource.demoUrl} demoType={resource.demoType} title={resource.title} compact onOpen={()=>openResource(resource)}/>
+            <div className="card-top"><span className={"resource-icon type-"+resource.category}><Icon size={23} aria-hidden="true"/></span><span className="type-label">{resource.category}<small>{topicOf(resource)}</small></span><button className={isFavorite?"favorite is-favorite":"favorite"} aria-pressed={isFavorite} aria-busy={pending} data-copied={copied===resource.id+"favorite"} aria-label={(isFavorite?"取消收藏 ":"收藏 ")+resource.title} disabled={pending||sessionLoading||storageUnavailable} onClick={()=>toggleFavorite(resource)}>{pending?<LoaderCircle size={18} className="saving-icon" aria-hidden="true"/>:<Heart size={19} aria-hidden="true"/>}</button></div>
+            <button className="card-title" onClick={()=>openResource(resource)}>{resource.title}</button>
+            <p>{resource.description}</p>
+            <div className="tags">{resource.tags.slice(0,3).map(item=><button key={item} aria-pressed={tag===item} onClick={()=>setTag(item)}>{item}</button>)}</div>
+            <div className="card-bottom">
+              {install?<div className="copy-options skill-card-install"><button data-copied={copied===resource.id+"installzh"} onClick={()=>copy(resource,"zh",true)} aria-label={"复制 "+resource.title+" 中文安装指令"}>{copied===resource.id+"installzh"?<Check size={15} aria-hidden="true"/>:<Copy size={15} aria-hidden="true"/>}安装指令</button><button data-copied={copied===resource.id+"installen"} onClick={()=>copy(resource,"en",true)} aria-label={"复制 "+resource.title+" 英文安装指令"}>{copied===resource.id+"installen"?<Check size={15} aria-hidden="true"/>:<Copy size={15} aria-hidden="true"/>}EN</button></div>:["提示词","Skills"].includes(resource.category)?<div className="copy-options"><button data-copied={copied===resource.id+"zh"} onClick={()=>copy(resource,"zh")} aria-label={"复制 "+resource.title+" 中文版"}>{copied===resource.id+"zh"?<Check size={15} aria-hidden="true"/>:<Copy size={15} aria-hidden="true"/>}中文</button><button data-copied={copied===resource.id+"en"} onClick={()=>copy(resource,"en")} disabled={!resource.contentEn} aria-label={"复制 "+resource.title+" 英文版"}>{copied===resource.id+"en"?<Check size={15} aria-hidden="true"/>:<Copy size={15} aria-hidden="true"/>}English</button></div>:<a href={resource.url} target="_blank" rel="noopener noreferrer">查看来源<ExternalLink size={14} aria-hidden="true"/></a>}
+              <button className="card-action" onClick={()=>openResource(resource)}>查看内容<BookOpen size={15} aria-hidden="true"/></button>
+            </div>
+          </article></div>;
+        })}</div>
+        {filtered.length>0&&pageCount>1&&<nav className="pagination" aria-label="资源分页"><button disabled={currentPage===1} onClick={()=>setPage(currentPage-1)}>上一页</button><span>{currentPage} / {pageCount}</span><button disabled={currentPage===pageCount} onClick={()=>setPage(currentPage+1)}>下一页</button></nav>}
+        {!filtered.length&&<div className="empty"><Search size={30} aria-hidden="true"/><h3>{!resources.length?"这里还没有收录资料":onlyFavorites&&!favorites.length?"收藏你的第一条资源":"没有找到匹配的资源"}</h3><p>{!resources.length?"分享一份你真正想收藏的资料，整理与审核后就会出现在这里。":onlyFavorites&&!favorites.length?"在资源卡片上点击爱心，把喜欢的内容留在手边。":"试试其他用途、标签或关键词。"}</p>{!resources.length?<button className="secondary-button" onClick={()=>setSubmissionOpen(true)}>分享第一份资料</button>:onlyFavorites&&!favorites.length?<button className="secondary-button" onClick={showLibrary}>浏览资源库</button>:<button className="secondary-button" onClick={resetFilters}>清除筛选</button>}</div>}
+      </section>
+      <aside className="right-rail">
+        <section className="archive-status"><span className="rail-label"><Orbit size={18} aria-hidden="true"/>档案概览</span><p>每一份资料，都有自己的位置。</p>{categories.filter(item=>item!=="全部").map(item=>{const Icon=icons[item];return <button className="status-row" key={item} onClick={()=>chooseFromHero(item)}><span><Icon size={17} aria-hidden="true"/>{item}</span><strong>{resources.filter(resource=>resource.category===item).length}<small>份</small></strong></button>;})}</section>
+        <section className="rail-tip"><span className="rail-label"><FolderOpen size={17} aria-hidden="true"/>从这里开始</span><p>选类型，再选用途。提示词可直接复制中英正文；Skills 可复制安装指令交给 Agent。</p><small>搜索支持中英文内容。按 / 或 Ctrl K 快速查找。</small></section>
+        <section className="rail-intake"><span className="rail-label"><Sparkles size={16} aria-hidden="true"/>一起补充档案</span><p>分享原文，整理中英版本、分类与标签，由管理员审核后公开。</p><button className="secondary-button" onClick={()=>setSubmissionOpen(true)}>提交一份资料</button></section>
+        <div className="rail-note"><BookOpen size={20} aria-hidden="true"/><div><strong>继续阅读与记录</strong><a href="https://tanke.asia/" target="_blank" rel="noopener noreferrer">访问 TK 的小站<ExternalLink size={14} aria-hidden="true"/></a></div></div>
+        {user&&["owner","admin"].includes(user.role)&&<a className="admin-link" href="/admin"><ShieldCheck size={17} aria-hidden="true"/>内容管理</a>}
+      </aside>
+    </main>
+    <footer><span>TK 的 AI 工具箱 <span className="footer-flower" aria-hidden="true">✦</span>分类 · 收藏 · 中英对照</span><div>{socialLinks.map(([name,url])=><a key={name} href={url} target="_blank" rel="noopener noreferrer">{name}</a>)}</div></footer>
+    <Sheet open={!!selected} onOpenChange={value=>{if(!value)setSelected(null);}}><SheetContent className="resource-sheet archive-detail" data-motion={motionEnabled?"active":"disabled"} onCloseAutoFocus={event=>{if(detailTriggerRef.current?.isConnected){event.preventDefault();detailTriggerRef.current.focus({preventScroll:true});}}}>
+      {selected&&<><SheetHeader><span className="type-label">{selected.category} · {topicOf(selected)}</span><SheetTitle className="detail-title">{selected.title}</SheetTitle><SheetDescription>{selected.description}</SheetDescription></SheetHeader><div className="detail-body">
+        <div className="detail-toolbar"><button className="secondary-button" disabled={pendingFavorites.includes(selected.id)||sessionLoading||storageUnavailable} aria-pressed={favorites.includes(selected.id)} onClick={()=>toggleFavorite(selected)}><Heart size={16} aria-hidden="true"/>{pendingFavorites.includes(selected.id)?"正在保存…":favorites.includes(selected.id)?"已收藏":"收藏资料"}</button>{selected.url&&<a className="secondary-button" href={selected.url} target="_blank" rel="noopener noreferrer">打开来源<ExternalLink size={16} aria-hidden="true"/></a>}</div>
+        <div className="tags">{selected.tags.map(item=><span key={item}>{item}</span>)}</div>
+        {selected.category==="Skills"&&<SkillInstallPanel key={selected.id} resource={selected}/>}
+        <DemoPreview demoUrl={selected.demoUrl} demoType={selected.demoType} title={selected.title}/>
+        <div className="bilingual-columns"><section lang="zh-CN"><div className="language-heading"><h3>中文版</h3><span>中文</span></div><p className="language-title">{selected.title}</p><pre tabIndex={0}>{selected.content}</pre><button className="primary-button" data-copied={copied===selected.id+"zh"} onClick={()=>copy(selected,"zh")}>{copied===selected.id+"zh"?<Check size={16} aria-hidden="true"/>:<Copy size={16} aria-hidden="true"/>}复制中文版</button></section><section lang="en"><div className="language-heading"><h3>English</h3><span>EN</span></div><p className="language-title">{selected.titleEn}</p><pre tabIndex={0}>{selected.contentEn||"English translation is pending."}</pre><button className="primary-button" disabled={!selected.contentEn} data-copied={copied===selected.id+"en"} onClick={()=>copy(selected,"en")}>{copied===selected.id+"en"?<Check size={16} aria-hidden="true"/>:<Copy size={16} aria-hidden="true"/>}Copy English</button></section></div>
+        <p className="source-note">来源：{selected.source}{selected.updatedAt&&" · 更新于 "+new Date(selected.updatedAt).toLocaleDateString("zh-CN",{timeZone:"Asia/Shanghai"})}</p>
+      </div></>}
+    </SheetContent></Sheet>
+    <SubmissionDialog open={submissionOpen} onOpenChange={setSubmissionOpen}/>
+    <Dialog open={login} onOpenChange={setLogin}><DialogContent><DialogHeader><DialogTitle>登录与收藏</DialogTitle><DialogDescription>当前测试版使用 Sites 账户。GitHub／邮箱登录将在身份服务配置完成后开放。</DialogDescription></DialogHeader>{sessionLoading?<p>正在读取账户…</p>:user?<><p>当前账户：{user.displayName}</p><button className="primary-button" onClick={()=>{showFavorites();setLogin(false);}}>查看我的收藏</button>{["owner","admin"].includes(user.role)&&<a className="secondary-button" href="/admin">内容管理</a>}<a className="text-button" href="/signout-with-chatgpt?return_to=/" target="_top">退出测试账户</a></>:<a className="primary-button" href="/signin-with-chatgpt?return_to=/" target="_top">使用测试账户继续</a>}</DialogContent></Dialog>
+  </div>;
 }

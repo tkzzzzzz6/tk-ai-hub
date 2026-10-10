@@ -303,8 +303,8 @@
   border-radius: 20px;
   border: 0;
   background: transparent;
-  backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   box-shadow: none;
   transform-style: preserve-3d;
   overflow: visible;
@@ -335,8 +335,8 @@
   border-left: 4px solid var(--card-rail);
   border-radius: 20px;
   background: rgba(255, 255, 255, .53);
-  backdrop-filter: blur(24px) saturate(112%);
   -webkit-backdrop-filter: blur(24px) saturate(112%);
+  backdrop-filter: blur(24px) saturate(112%);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   box-shadow: 0 2px 3px #244b6210, 0 15px 34px -19px #275a7942,
@@ -566,7 +566,7 @@
     --tone-accent: CanvasText; --tone-strong: CanvasText; --tone-ink: CanvasText; --tone-glow: transparent;
   }
   .archive-shell .resource-card { --card-rail: CanvasText!important; --card-label: CanvasText!important; }
-  .archive-shell .card-face, .archive-detail[data-tone]>[data-slot="sheet-header"] { background: Canvas; border-color: CanvasText; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .archive-shell .card-face, .archive-detail[data-tone]>[data-slot="sheet-header"] { background: Canvas; border-color: CanvasText; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
   .archive-shell .card-face::before, .archive-shell .resource-card .feedback-flash { display: none; }
   .archive-shell .card-language-tabs button[aria-selected="true"],
   .archive-shell .card-language-tabs button[aria-pressed="true"] { background: Highlight; color: HighlightText; }
@@ -731,7 +731,7 @@ html:has(.archive-shell[data-motion="disabled"]) { scroll-behavior: auto; }
   .archive-shell .feedback-flash, .archive-shell .card-face::before { display: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
-  .archive-shell :is(.topbar, .archive-hero, .library-controls, .card-face, .archive-status, .rail-tip, .rail-note, .rail-intake, .stage-caption) { background: #f9fcff; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .archive-shell :is(.topbar, .archive-hero, .library-controls, .card-face, .archive-status, .rail-tip, .rail-note, .rail-intake, .stage-caption) { background: #f9fcff; -webkit-backdrop-filter: none; backdrop-filter: none; }
   .archive-shell .ambient-scene span, .archive-shell .glass-reflection { display: none; }
   .archive-shell .card-face::before { display: none; }
 }
